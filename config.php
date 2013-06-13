@@ -1,5 +1,6 @@
 <?php
 return array(
+	'socketName' => 'bot.socket',
 	'server'   => 'irc.freenode.org',
 	'serverPassword' => '',
 	'port'	 => 6667,
