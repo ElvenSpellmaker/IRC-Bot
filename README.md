@@ -1,4 +1,7 @@
 # WildBot - IRC Bot
+
+NOTE: This Readme is very out of date and needs a big update which will happen soon.
+
 A IRC Bot built in PHP (using sockets) with OOP. Designed to run off a local LAMP, WAMP, or MAMP stack.
 Includes a custom [Upstart](http://upstart.ubuntu.com/) script to run as Linux daemon.
 
