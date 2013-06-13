@@ -11,25 +11,32 @@ namespace Command;
  * @author Daniel Siepmann <coding.layne@me.com>
  */
 class Quit extends \Library\IRC\Command\Base {
-    /**
-     * The command's help text.
-     *
-     * @var string
-     */
-    protected $help = '!quit';
+	/**
+	 * The command's help text.
+	 *
+	 * @var string
+	 */
+	protected $help = '!quit';
 
-    /**
-     * Require admin, set to true if only admin may execute this.
-     * @var boolean
-     */
-    protected $requireAdmin = true;
-    
-    /**
-     * Leave IRC altogether.
-     * This disconnects from the server.
-     */
-    public function command() {
-        $this->connection->sendData( 'QUIT' );
-        exit();
-    }
+	/**
+	 * The number of arguments the command needs.
+	 *
+	 * @var integer
+	 */
+	protected $argc = 0;
+	
+	/**
+	 * Require admin, set to true if only admin may execute this.
+	 * @var boolean
+	 */
+	protected $requireAdmin = true;
+	
+	/**
+	 * Leave IRC altogether.
+	 * This disconnects from the server.
+	 */
+	public function command() {
+		$this->connection->sendData( 'QUIT' );
+		exit();
+	}
 }
