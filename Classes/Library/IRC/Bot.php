@@ -1,5 +1,4 @@
 <?php
-
 /**
  * WildBot
  *
@@ -206,12 +205,13 @@ class Bot
 	{
 		if ( $this->logFileHandler ) fclose( $this->logFileHandler );
 		
-		if($this->connection != null)
+		/*if($this->connection != null)
 		{
 			socket_shutdown($this->connection);
 			socket_close($this->connection);
 			unlink($this->connection);
 		}
+		This isn't working, for one reason or another. */
 	}
 	
 	/**

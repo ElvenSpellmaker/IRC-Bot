@@ -29,6 +29,7 @@ return array(
 		'Command\Restart' => '',
 		'Command\Serialise' => '',
 		'Command\Remember'  => '',
+		'Command\BotSnack'  => '',
 	),
 	'listeners' => array(
 		'Listener\Joins' => '',

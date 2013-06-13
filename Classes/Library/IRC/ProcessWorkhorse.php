@@ -1,5 +1,4 @@
 <?php
-
 /**
  * WildBot
  *
@@ -29,7 +28,8 @@ namespace Library\IRC;
  * @author Daniel Siepmann <coding.layne@me.com>
  * @author Jack Blower <Jack@elvenspellmaker.co.uk> 
  */
-class ProcessWorkhorse {
+class ProcessWorkhorse
+{
 
 	/**
 	 * Holds the bot connectionName
@@ -136,12 +136,13 @@ class ProcessWorkhorse {
 	{
 		if ( $this->logFileHandler ) fclose( $this->logFileHandler );
 		
-		if($connection != null)
+		/*if($this->socket != null)
 		{
-			socket_shutdown($connection);
-			socket_close($connection);
-			unlink($connection);
+			socket_shutdown($this->socket);
+			socket_close($this->socket);
+			unlink($this->socket);
 		}
+		This isn't working, for one reason or another. */
 	}
 	
 	/**

@@ -45,6 +45,7 @@ abstract class WorkHorse extends \StaticBot
 		
 		self::registerPlugins('Command');
 		self::registerPlugins('Listener');
+		self::$pw->remember(); // Try to remember everything.
 		
 		// Connect to the server.
 		self::$pw->connectToServerAndStart();
