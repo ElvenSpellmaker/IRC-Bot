@@ -42,4 +42,3 @@ class BotSnack extends \Library\IRC\Command\Base
 		return;
 	}
 }
-?>
