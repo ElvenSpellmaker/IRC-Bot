@@ -206,9 +206,12 @@ class Bot
 	{
 		if ( $this->logFileHandler ) fclose( $this->logFileHandler );
 		
-		socket_shutdown($connection);
-		socket_close($connection);
-		unlink($connection);
+		if($this->connection != null)
+		{
+			socket_shutdown($this->connection);
+			socket_close($this->connection);
+			unlink($this->connection);
+		}
 	}
 	
 	/**
@@ -317,7 +320,8 @@ class Bot
 					//Parse Usernames into List //
 					for($i = 6; $i < count($args); $i++)
 					{
-						
+						// NOT COMPLETE
+						// WILL FINISH SOON. --Jack Blower
 					}
 					//////////////////////////////
 					//$nickNames
@@ -417,7 +421,7 @@ class Bot
 		if ( empty( $status ) ) $status = 'LOG';
 		
 		$msg = date( 'd.m.Y - H:i:s' ) . "\t  [ " . $status . " ] \t" . \Library\FunctionCollection::removeLineBreaks( $log ) . "\r\n";
-		echo $msg;
+		//echo $msg;
 		
 		if ( !is_null( $this->logFileHandler ) ) fwrite( $this->logFileHandler, $msg );
 	}
@@ -516,7 +520,7 @@ class Bot
 	 * Set a user as an admin
 	 *
 	 * @param string $user
-	 *			The user to set as admin.
+	 * 			The user to set as admin.
 	 */
 	public function setAdmin( $user )
 	{
@@ -530,16 +534,29 @@ class Bot
 		return $this;
 	}
 	
-	public function adminChange($user, $newnick)
+	/**
+	 * Changes an admin's nickname.
+	 * Used when 
+	 * @param string $user
+	 *			The old nick of the admin.
+	 * @param string $newNick
+	 * 			The new nick of the admin.
+	 */
+	public function adminChange($user, $newNick)
 	{
 		if(isset($this->admins[(string) $user]))
 		{
-			$newuser = trim($newnick).substr($user, strpos($user, '!'));
+			$newuser = trim($newNick).substr($user, strpos($user, '!'));
 			$this->removeAdmin($user)->setAdmin($newuser);
 		}
 		return $this;
 	}
 
+	/**
+	 * Removes a user from being an admin.
+	 * @param string $user
+	 * 			The user's nick to remove.
+	 */ 
 	public function removeAdmin( $user )
 	{
 		if(isset($this->admins[(string) $user]))
@@ -550,6 +567,11 @@ class Bot
 		return $this;
 	}
 
+	/**
+	 * Returns a list of all admins if no arguments are given, else returns true if the admin exists name passed.
+	 * @param string $user
+	 * 				The username to check.
+	 */
 	public function getAdmins( $user = null )
 	{
 		return $user == null ? $this->admins : (isset($this->admins[$user]) ? $this->admins[$user] : false);
@@ -575,7 +597,7 @@ class Bot
 	 */
 	public function setLogFile( $logFile )
 	{
-		$this->logFile = (string) $logFile;
+		$this->logFile = "log/". (string) $logFile;
 		if ( !empty( $this->logFile ) )
 		{
 			$logFilePath = dirname( $this->logFile );

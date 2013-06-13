@@ -22,18 +22,18 @@
  * @package WildBot
  * @author Daniel Siepmann <coding.layne@me.com>
  */
-class Autoloader {
+class Autoloader
+{
 	/**
 	 * Includes the PHP-File for the specified class.
 	 *
 	 * @param string $class
 	 * @author Daniel Siepmann <coding.layne@me.com>
 	 */
-	public static function load( $class ) {
+	public static function load( $class )
+	{
 		$filename = __DIR__ . '/' . str_replace( '\\', '/', $class ) . '.php';
-		if ( file_exists( $filename ) ) {
-			return require $filename;
-		}
+		if ( file_exists( $filename ) ) return require $filename;
 		throw new Exception( 'File: "' . $filename . '" not found.' );
 	}
 }

@@ -36,7 +36,7 @@ class Quit extends \Library\IRC\Command\Base {
 	 * This disconnects from the server.
 	 */
 	public function command() {
-		$this->connection->sendData( 'QUIT' );
+		$this->sayRaw('QUIT');
 		exit();
 	}
 }

@@ -13,6 +13,8 @@
  * @package WildBot
  * @author Hoshang Sadiq <superaktieboy@gmail.com>
  */
+ 
+require('StaticBot.php');
 
 /**
  * Main WildBot class.
@@ -22,14 +24,8 @@
  *		 
  * @author Hoshang Sadiq <superaktieboy@gmail.com>
  */
-class WildBot {
-	/**
-	 * This contains the registered data
-	 * 
-	 * @var array
-	 */
-	private static $_registry = array ();
-	
+abstract class WildBot extends \StaticBot
+{	
 	/**
 	 * This will contain the bot class
 	 * 
@@ -41,70 +37,13 @@ class WildBot {
 	 * Initiates the application.
 	 * Loads the autoloader and runs the configurations
 	 */
-	public static function init() {
-		require_once ( 'Autoloader.php' );
-		spl_autoload_register( 'Autoloader::load' );
-		date_default_timezone_set( 'Europe/London' );
-		
+	public static function init()
+	{	
+		self::basicConfiguration();
 		self::$bot = new Library\IRC\Bot();
-		self::configure();
-		
-		if ( function_exists( 'setproctitle' ) ) {
-			$title = basename( __FILE__, '.php' ) . ' - ' . self::get( 'config' )->nick;
-			setproctitle( $title );
-		}
+		self::configure(self::$bot);
 		
 		// Connect to the server.
 		self::$bot->connectToServer();
-	}
-	
-	/**
-	 * Loads and saves the configuration to the registry
-	 */
-	public static function configure() {
-		if ( file_exists( ROOT_DIR . DS . 'config.local.php' ) ) {
-			$config = include_once ( ROOT_DIR . DS . 'config.local.php' );
-		} else {
-			$config = include_once ( ROOT_DIR . DS . 'config.php' );
-		}
-		self::set( 'config', (object) $config );
-		self::$bot->configure();
-	}
-	
-	/**
-	 * Register a new variable
-	 *
-	 * @param string $key
-	 * @param mixed $value
-	 */
-	public static function set( $key, $value ) {
-		self::$_registry[$key] = $value;
-	}
-	
-	/**
-	 * Unregister a variable from register by key
-	 *
-	 * @param string $key
-	 */
-	public static function unregister( $key ) {
-		if ( isset( self::$_registry[$key] ) ) {
-			if ( is_object( self::$_registry[$key] ) && ( method_exists( self::$_registry[$key], '__destruct' ) ) ) {
-				self::$_registry[$key]->__destruct();
-			}
-			unset( self::$_registry[$key] );
-		}
-	}
-	
-	/**
-	 * Retrieve a value from registry by a key
-	 *
-	 * @param string $key
-	 * @return mixed
-	 */
-	public static function get( $key ) {
-		if ( isset( self::$_registry[$key] ) ) {
-			return self::$_registry[$key];
-		}
-		return null;
 	}
 }
