@@ -40,7 +40,13 @@ class Poke extends \Library\IRC\Command\Base {
 	 * control charater. This is needed to send the ACTION command, but
 	 * it not needed when sending a regular text message.
 	 */
-	public function command() {
-		$this->connection->sendData( 'PRIVMSG ' . $this->arguments[0] . ' :' . chr( 1 ) . 'ACTION pokes ' . trim( $this->arguments[1] ) . chr( 1 ) );
+	public function command()
+	{
+		//var_dump($this->arguments);
+		
+		if( $this->arguments[1] != '' )
+			$this->doAction( 'pokes ' . trim( $this->arguments[1] ) . ' (' . $this->queryUser . ')' );
+		else if( count($this->arguments) == 1 )
+			$this->doAction( 'pokes ' . trim( $this->arguments[0] ) . ' (' . $this->queryUser . ')' );
 	}
 }

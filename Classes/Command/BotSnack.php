@@ -33,12 +33,5 @@ class BotSnack extends \Library\IRC\Command\Base
 	 * Joins the specified channel.
 	 * IRC-Syntax: JOIN [#channel]
 	 */
-	public function command()
-	{
-		
-		preg_match("/(.+)!/", $this->privSource, $queryUser);
-		$queryUser = $queryUser[1];
-		$this->say($queryUser .": YUM!");
-		return;
-	}
+	public function command() { $this->say($this->queryUser .": YUM!"); }
 }

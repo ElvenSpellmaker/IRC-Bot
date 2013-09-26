@@ -76,6 +76,13 @@ abstract class Base
 	protected $arguments = array ();
 	
 	/**
+	 * Contains the nickname that queried the bot.
+	 *
+	 * @var string
+	 */	 
+	protected $queryUser = '';
+	 
+	/**
 	 * Set's the IRC Connection, so we can use it to send data to the server.
 	 * 
 	 * @param \Library\IRC\Connection $ircConnection			
@@ -113,6 +120,11 @@ abstract class Base
 		$this->source = substr( trim( \Library\FunctionCollection::removeLineBreaks( $args[2] ) ), 0 );
 		$this->command = isset($args[3]) ? substr( trim( \Library\FunctionCollection::removeLineBreaks( $args[3] ) ), 1 ) : '';
 		$this->arguments = count( $args ) > 4 ? array_slice( $args, 4 ) : array ();
+		
+		if(count($this->arguments) != 0) $this->arguments[count($this->arguments) - 1] = \Library\FunctionCollection::removeLineBreaks( $this->arguments[count($this->arguments) - 1] );
+		
+		preg_match( '/(.+)!/', $this->privSource, $queryUser );
+		$this->queryUser = $queryUser[1];
 		
 		$this->args = $args;
 		return $this;
@@ -166,7 +178,7 @@ abstract class Base
 	 */
 	private function getUserNickName( $user )
 	{
-		$result = preg_match( '/([a-zA-Z0-9_]+)!/', $user, $matches );
+		$result = preg_match( '/([a-zA-Z0-9_\-]+)!/', $user, $matches );
 		
 		if ( $result !== false ) {
 			return $matches[1];
@@ -215,7 +227,7 @@ abstract class Base
 	protected function say( $msg, $source = 'default' )
 	{
 		$toNick = $this->getSourceNick($source);
-		echo "\n", $toNick, "\n";
+		//echo "\n", $toNick, "\n";
 		$msg = 'PRIVMSG ' . $toNick . ' :' . $msg;
 		
 		return $this->sayRaw( $msg );

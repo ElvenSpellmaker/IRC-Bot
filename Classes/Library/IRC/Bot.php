@@ -57,13 +57,6 @@ class Bot
 	private $serverPassword = '';
 	
 	/**
-	 * adminPassword
-	 *
-	 * @var string
-	 */
-	private $adminPassword = '';
-	
-	/**
 	 * A list of all channels the bot should connect to.
 	 *
 	 * @var array
@@ -123,13 +116,6 @@ class Bot
 	private $commandPrefix = '!';
 	
 	/**
-	 * All of the messages both server and client
-	 *
-	 * @var array
-	 */
-	private $ex = array ();
-	
-	/**
 	 * The nick counter, used to generate a available nick.
 	 *
 	 * @var integer
@@ -144,29 +130,6 @@ class Bot
 	private $numberOfReconnects = 0;
 	
 	/**
-	 * All available commands.
-	 * Commands are type of IRCCommand
-	 *
-	 * @var array
-	 */
-	private $commands = array();
-	
-	/**
-	 * All available listeners.
-	 * Listeners are type of IRCListener
-	 *
-	 * @var array
-	 */
-	private $listeners = array();
-	
-	/**
-	 * All admins will be stored here
-	 *
-	 * @var array
-	 */
-	private $admins = array();
-	
-	/**
 	 *	NickName list
 	 *
 	 *	@var array
@@ -179,14 +142,6 @@ class Bot
 	 * @var type
 	 */
 	private $logFileHandler = null;
-	private static $commandString = 'Command';
-	private static $listenerString = 'Listener';
-	private static $serialiseStrings = array (
-			'Serialise End' => 'successfully serialised!',
-			'Serialise End Fail' => 'didn\'t serialise!',
-			'Remember End' => 'successfully remebered all it can!',
-			'Remember End Fail' => 'could not remember anything!' 
-	);
 	
 	/**
 	 * Creates a new IRC Bot.
@@ -314,18 +269,19 @@ class Bot
 				{
 					$channel = $args[4];
 					
-					$firstNick = explode(':', $args[5]);
-					$nickNames[$channel] = $firstNick;
+					$args[5] = substr($args[5], 1); // Strip colon from the first name.
 					
 					//Parse Usernames into List //
-					for($i = 6; $i < count($args); $i++)
+					for($i = 5; $i < count($args) - 1; $i++)
 					{
-						// NOT COMPLETE
-						// WILL FINISH SOON. --Jack Blower
+						//echo '"', $args[$i], '" "', $i, '"';
+						if(preg_match('/[A-Za-z{}[\]\-\\|^`]/', $args[$i][0]))
+							$nickNames[$channel][''][] = \Library\FunctionCollection::removeLineBreaks( $args[$i] );
+						else
+							$nickNames[$channel][$args[$i][0]][] = \Library\FunctionCollection::removeLineBreaks( substr($args[$i], 1) );
 					}
 					//////////////////////////////
-					//$nickNames
-					
+					//var_dump($nickNames);
 				}
 				///////////////
 				
@@ -365,6 +321,17 @@ class Bot
 				
 				// Play ping pong with server, to stay connected:
 				if ( $args[0] == 'PING' ) $this->sendDataToServer( 'PONG ' . $args[1] );
+				
+			}
+			
+			if ( $args[1] === 'PRIVMSG' )
+			{
+			
+				preg_match( '/:(.+)!/', $args[0], $queryUser );
+				$queryUser = $queryUser[1];
+
+				
+				if( $args[3] == ":VERSION\r\n" ) $this->sendDataToServer( "NOTICE $queryUser VERSION WildBot (Multi-Process) : v0.1 : PHP 5.5" );
 			}
 			
 			// Lastly if we have a connection ...
@@ -374,7 +341,7 @@ class Bot
 				if ($writeResult === FALSE) $this->workhorseConnection = null; // If we fail to send then nullify the socket.
 			}
 		}
-	}
+	} 
 	
 	/**
 	 * Displays stuff to the broswer and sends data to the server.
@@ -598,6 +565,7 @@ class Bot
 	public function setLogFile( $logFile )
 	{
 		$this->logFile = "log/". (string) $logFile;
+		
 		if ( !empty( $this->logFile ) )
 		{
 			$logFilePath = dirname( $this->logFile );

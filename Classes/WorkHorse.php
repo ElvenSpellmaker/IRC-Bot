@@ -57,7 +57,6 @@ abstract class WorkHorse extends \StaticBot
 	public static function registerPlugins( $type = NULL )
 	{
 		if($type !== 'Command' && $type !== 'Listener') return;
-		echo "Hello";
 		foreach( self::get( 'config' )->{strtolower($type) .'s'} as $class => $args ) // 'Commands' or 'Listeners'
 		{
 			$pluginPath = $type .'\\'. $class; // Command\<foo> or Listener\<foo>

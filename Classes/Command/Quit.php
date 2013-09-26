@@ -36,7 +36,7 @@ class Quit extends \Library\IRC\Command\Base {
 	 * This disconnects from the server.
 	 */
 	public function command() {
-		$this->sayRaw('QUIT'); // Need tow work out something better than this, the code seems to complain about the exiting.
+		$this->sayRaw('QUIT'); // Need to work out something better than this, the code seems to complain about the exiting.
 		exit();
 	}
 }

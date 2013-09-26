@@ -17,7 +17,7 @@ class Weather extends \Library\IRC\Command\Base {
 	 *
 	 * @var string
 	 */
-	protected $help = '!weather [location]';
+	protected $help = '!weather [--set] [location]';
 	
 	/**
 	 * The number of arguments the command needs.
@@ -61,6 +61,13 @@ class Weather extends \Library\IRC\Command\Base {
 	private $ipUri = "http://ip-api.com/json/%s";
 	
 	/**
+	 * Allows overriding the default weather place for a user.
+	 * 
+	 * @var array
+	 */
+	private $savedPlaces = array();
+	
+	/**
 	 *
 	 * @param string $yahooKey			
 	 */
@@ -78,7 +85,28 @@ class Weather extends \Library\IRC\Command\Base {
 	 */
 	public function command() {
 	
+	
+		//$this->say($this->queryUser .': Sorry, weather isn\'t available right now, due to kestrel not having a required package. Hopefully Tim can get it installed tomorrow.~~');
+		//return;
+	
 		$tomorrow = false;
+		
+		if(strtolower($this->arguments[0]) == '--set' && $this->arguments[1] != '')
+		{	
+			$this->savedPlaces[$this->queryUser] = '';
+			for($i = 1; $i < count($this->arguments); $i++)
+				@$this->savedPlaces[$this->queryUser] .= ($this->arguments[$i] . ' ');
+			$this->say( $this-> queryUser . ': Weather for you has been set to '. $this->savedPlaces[$this->queryUser] );
+			return;
+		}
+		
+		if(!empty($this->savedPlaces[$this->queryUser]) && (empty($this->arguments[0]) || strtolower($this->arguments[0]) == 'tomorrow' ))
+		{
+			if(strtolower($this->arguments[0]) == 'tomorrow')
+				$tomorrow = true;
+			$this->arguments = array(); // Wipe the arguments array.
+			$this->arguments[0] = $this->savedPlaces[$this->queryUser]; // Use the stored one instead!
+		}
 	
 		$location = implode( " ", $this->arguments );
 		// remove new lines and double spaces
@@ -86,12 +114,12 @@ class Weather extends \Library\IRC\Command\Base {
 		$location = trim( $location );
 		$location = urlencode( $location );
 		
-		echo $location;
+		//echo $location;
 		
 		$matches = array();
 		if(preg_match('/(.+)+tomorrow/', $location, $matches))
 		{
-			var_dump($matches);
+			//var_dump($matches);
 			$tomorrow = true;
 			$location = $matches[1];
 		} else if($location == 'tomorrow')
@@ -100,17 +128,23 @@ class Weather extends \Library\IRC\Command\Base {
 			$location = '';
 		}
 		
-		if ( !strlen( $location ) ) {
+		//$location = ucwords($location);
+		$location = mb_convert_case($location, MB_CASE_TITLE);
+		
+		if ( !strlen( $location ) )
+		{
 			$ip = $this->getUserIp();
 			
-			if ( !$ip ) {
+			if ( !$ip )
+			{
 				$this->say( sprintf( "Enter location. (Usage: !weather location)" ) );
 				return;
 			}
 			
 			$location = $this->getLocationNameFromIp( $ip );
 			
-			if ( !strlen( $location ) ) {
+			if ( !strlen( $location ) )
+			{
 				$this->say( sprintf( "Enter location. (Usage: !weather location)" ) );
 				return;
 			}
@@ -120,19 +154,18 @@ class Weather extends \Library\IRC\Command\Base {
 		
 		$locationObject = $this->getLocation( $location );
 		
-		if ( $locationObject ) {
+		if ( $locationObject )
+		{
 			$this->bot->log( "Woeid for {$locationObject->name} is {$locationObject->woeid}" );
 			
 			$weather = $this->getWeather( $locationObject->woeid, $tomorrow );
 			
-			if ( $weather ) {
-				$this->say( "Weather for {$locationObject->name}, {$locationObject->country}: " . $weather );
-			} else {
-				$this->say( "Weather for {$locationObject->name}, {$locationObject->country} not found." );
-			}
-		} else {
-			$this->say( sprintf( "Location '%s' not found.", $location ) );
-		}
+			if ( $weather )
+				$this->say( $this->queryUser . ": Weather for {$locationObject->name}, {$locationObject->country}: " . $weather );
+			else
+				$this->say( $this-> queryUser . ": Weather for {$locationObject->name}, {$locationObject->country} not found." );
+				
+		} else $this->say( sprintf( "Location '%s' not found.", urldecode($location) ) );
 	}
 	protected function getWeather( $woeid, $tomorrow ) {
 		$yql = sprintf( 'select * from weather.forecast where woeid=%d and u="c"', $woeid );
@@ -140,13 +173,9 @@ class Weather extends \Library\IRC\Command\Base {
 		$response = $this->fetch( sprintf( $this->weatherUri, urlencode( $yql ) ) );
 		$jsonResponse = json_decode( $response );
 		
-		if ( !$jsonResponse ) {
-			return false;
-		}
+		if ( !$jsonResponse ) return false;
 		
-		if ( !isset( $jsonResponse->query->results ) ) {
-			return false;
-		}
+		if ( !isset( $jsonResponse->query->results ) ) return false;
 		
 		$results = $jsonResponse->query->results;
 		
@@ -154,6 +183,7 @@ class Weather extends \Library\IRC\Command\Base {
 		
 		if(!$tomorrow) // If today
 		{
+			//var_dump($results);
 			$condition = $results->channel->item->condition;
 			
 			$windSpeed = $results->channel->wind->speed;
@@ -168,8 +198,11 @@ class Weather extends \Library\IRC\Command\Base {
 			$speedUnit = $results->channel->units->speed;
 			$distanceUnit = $results->channel->units->distance;
 			
-			return $condition->text .', '. $condition->temp .'°'. $tempUnit .'. Wind Speed: '. $windSpeed . $speedUnit .', Wind Temp: '. $chill .'°'. $tempUnit .'.'.
-				   ' Humidity '. $humidity .'%, Visibility '. $visibility . $distanceUnit .'. Sunrise at '. $sunrise. ' and Sunset at '. $sunset .'.';
+			$highTemp = $results->channel->item->forecast[0]->high;
+			$lowTemp = $results->channel->item->forecast[0]->low;
+			
+			return $condition->text .', '. Weather::colourTemp($condition->temp) .'°'. $tempUnit .'. Wind Speed: '. $windSpeed . $speedUnit .', Wind Temp: '. Weather::colourTemp($chill) .'°'. $tempUnit .'.'.
+				   ' Humidity '. $humidity .'%, Visibility '. $visibility . $distanceUnit .'. High Temp: '. Weather::colourTemp($highTemp) .'°'. $tempUnit .', Low Temp: '. Weather::colourTemp($lowTemp) .'°'. $tempUnit .'. Sunrise at '. $sunrise. ' and Sunset at '. $sunset .'.';
 		}
 		else
 		{
@@ -178,8 +211,28 @@ class Weather extends \Library\IRC\Command\Base {
 			$weatherText = $results->channel->item->forecast[1]->text;
 			$weatherDate = $results->channel->item->forecast[1]->date;
 			
-			return 'Tomorrow ('. $weatherDate .'), High Temp: '. $highTemp .'°'. $tempUnit .', Low Temp: '. $lowTemp .'°'. $tempUnit. '. '. $weatherText . '.';
+			return 'Tomorrow ('. $weatherDate .'), High Temp: '. Weather::colourTemp($highTemp) .'°'. $tempUnit .', Low Temp: '. Weather::colourTemp($lowTemp) .'°'. $tempUnit. '. '. $weatherText . '.';
 		}
+	}
+	
+	/**
+	 * Colours the temperature appropriately.
+	 *
+ 	 */
+	protected static function colourTemp( $temperature )
+	{
+		if($temperature > 25) return Weather::colourTempString($temperature, 5, true); // Colour Dark Red and Flashing.
+		else if($temperature > 18) return Weather::colourTempString($temperature, 4); // Colour Red.
+		else if($temperature > 10) return Weather::colourTempString($temperature, 7); // Colour Dark Yellow.
+		else if($temperature > 0) return $temperature; // Don't colour.
+		else return Weather::colourTempString($temperature, 10); // Colour Teal.
+	
+	}
+	
+	protected static function colourTempString($temperature, $colourNumber, $flashing = false)
+	{
+		if(!$flashing) return "$colourNumber".$temperature."";
+		else return "$colourNumber".$temperature."";
 	}
 	
 	/**
@@ -226,5 +279,28 @@ class Weather extends \Library\IRC\Command\Base {
 		}
 		
 		return null;
+	}
+	
+	/**
+	 * Serialises to disk.
+	 */
+	public function serialise()
+	{
+		$hashFileName = "cerealeyes/WeatherHash.jack";
+		return file_put_contents($hashFileName, serialize($this->savedPlaces));
+	}
+	 
+	/**
+	* Remembers the Karma database from file.
+	*/ 
+	public function remember()
+	{
+		$hashFileName = "cerealeyes/WeatherHash.jack";
+		
+		@$hashCereal = file_get_contents($hashFileName);
+		
+		if($hashCereal !== FALSE) $this->savedPlaces = unserialize($hashCereal);
+		
+		return $hashCereal;
 	}
 }

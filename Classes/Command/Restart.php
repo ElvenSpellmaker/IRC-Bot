@@ -35,9 +35,17 @@ class Restart extends \Library\IRC\Command\Base {
 	 */
 	public function command() {
 		// Exit from Sever
-		$this->connection->sendData( 'QUIT' );
+		//$this->connection->sendData( 'QUIT' );
 		
 		// Reconnect to Server
-		$this->bot->connectToServer();
+		//$this->bot->connectToServer();
+		
+		$this->say( $this->queryUser . ': Attempting to serialise for a restart.~');
+		$this->bot->serialise();
+		$this->say( $this->queryUser . ': Starting new bot.~');
+		exec('runPW.sh');
+		//$this->say('nohup php '. $this->bot->getRootFileName() .' >> '. $this->bot->getRootDir() .'/pw.out 2>>&1 &');
+		$this->say( $this->queryUser . ': Exiting now.~');
+		exit();
 	}
 }

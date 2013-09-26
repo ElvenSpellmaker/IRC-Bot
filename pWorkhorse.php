@@ -18,6 +18,7 @@ define( 'ROOT_DIR', __DIR__ );
 define( 'DS', DIRECTORY_SEPARATOR );
 define( 'PS', PATH_SEPARATOR );
 define( 'PE', PHP_EOL );
+define( 'ROOT_FILE_NAME', __FILE__ );
 
 set_include_path( ROOT_DIR . DS . 'Classes' . DS );
 

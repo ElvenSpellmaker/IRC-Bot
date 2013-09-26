@@ -60,6 +60,8 @@ class ProcessWorkhorse
 	
 	/**
 	 * The name of the bot.
+	 *
+	 * @var string
 	 */
 	private $name = '';
 	
@@ -67,11 +69,6 @@ class ProcessWorkhorse
 	 * The nick of the bot.
 	 */
 	private $nick = '';
-	
-	/**
-	 * The number of reconnects before the bot stops running.
-	 */
-	private $maxReconnects = 0;
 	
 	/**
 	 * Complete file path to the log file.
@@ -83,21 +80,6 @@ class ProcessWorkhorse
 	 * Defines the prefix for all commands interacting with the bot.
 	 */
 	private $commandPrefix = '!';
-	
-	/**
-	 * All of the messages both server and client
-	 */
-	private $ex = array ();
-	
-	/**
-	 * The nick counter, used to generate a available nick.
-	 */
-	private $nickCounter = 0;
-	
-	/**
-	 * Contains the number of reconnects.
-	 */
-	private $numberOfReconnects = 0;
 	
 	/**
 	 * All available commands.
@@ -115,6 +97,19 @@ class ProcessWorkhorse
 	 * All admins will be stored here
 	 */
 	private $admins = array ();
+	
+	/**
+	 * All banned users will be stored here
+	 */
+	private $bannedUsers = array ();
+	
+	/**
+	 * Contains a 2D array
+	 * Indexes denote things to be serialised.
+	 * 	--> The file name to store under.
+	 *  --> What variable to store.
+	 */
+	private $serialiseArray = array ();
 
 	/**
 	 * Holds the reference to the file.
@@ -154,9 +149,9 @@ class ProcessWorkhorse
 		{
 			$this->socket = @fsockopen( 'unix:///tmp/'. $this->socketName, NULL );
 			
-			if (!is_resource( $this->socket ))
+			if (!is_resource( $this->socket ) )
 			{
-				echo 'Unable to connect to server via fsockopen with server: "' . $this->socketName ."\".\n";
+				echo 'Unable to connect to server via fsockopen with server: "' . $this->socketName ."\".\r\n";
 				sleep(1); // Wait a second before trying again.
 			}
 			else $this->main(); // Run the workhorse because we have a bot connection.
@@ -170,6 +165,7 @@ class ProcessWorkhorse
 	 * @author Super3 <admin@wildphp.com>
 	 * @author Daniel Siepmann <coding.layne@me.com>
 	 * @author Hoshang Sadiq <superaktieboy@gmail.com>
+	 * @author Jack Blower <Jack@elvenspellmaker.co.uk> 
 	 */
 	private function main()
 	{
@@ -177,6 +173,8 @@ class ProcessWorkhorse
 		$command = '';
 		$arguments = array ();
 		$arr = array();
+		$this->serialiseArray[0][0] = 'cerealeyes/BannedUsersHash.jack';
+		$this->serialiseArray[0][1] = 'bannedUsers';
 
 		while(true)
 		{
@@ -194,6 +192,7 @@ class ProcessWorkhorse
 			
 			$this->args = $args;
 
+			// Admins //
 			if($this->args[1] === 'PRIVMSG' && $this->args[2] == $this->getNick() && (count($this->args) == 4 || count($this->args) == 5))
 			{
 				if($this->args[3] == ':'.$this->getCommandPrefix().'admin')
@@ -202,9 +201,40 @@ class ProcessWorkhorse
 						$this->setAdmin($this->args[0]);
 					else
 						$this->removeAdmin($this->args[0]);
+					continue;
 				}
 			}
+			////////////
+
+			// Bans //
+			if( $this->args[1] === 'PRIVMSG' && $this->getAdmins($this->args[0]) && count($this->args) >= 4 )
+			{
+				switch($this->args[3])
+				{
+					case ':'.$this->getCommandPrefix().'ban':
+						for( $i = 4; $i < count( $this->args ); $i++ )
+						{
+							$this->bannedUsers[trim( $this->args[$i] )] = 1;
+							$msg = "PRIVMSG {$this->args[2]} :Added the ban.";
+							$this->log( $msg );
+							fwrite( $this->socket, $msg . "\r\n" );
+						}
+					continue 2;
+					case ':'.$this->getCommandPrefix().'unban':
+						for( $i = 4; $i < count( $this->args ); $i++ )
+						{
+							unset($this->bannedUsers[trim( $this->args[$i] )]);
+							$msg = "PRIVMSG {$this->args[2]} :Removed the ban.";
+							$this->log( $msg );
+							fwrite( $this->socket, $msg . "\r\n" );
+							$trigger = true;
+						}
+					continue 2;
+				}
+			}
+			//////////
 			
+			// Help //
 			if($this->args[1] === 'PRIVMSG' && (count($this->args) == 5 || count($this->args) == 6))
 			{
 				if($this->args[3] == ':'.$this->getCommandPrefix().'help')
@@ -217,6 +247,35 @@ class ProcessWorkhorse
 					continue;
 				}
 			}
+			//////////
+			
+			// Serialisation Hook //
+			if( $this->args[1] === 'PRIVMSG' && $this->getAdmins($this->getUserNickName($this->args[2])) && count($this->args) == 4 )
+			{
+				switch( trim( $this->args[3] ) )
+				{
+					case ':'.$this->getCommandPrefix().'serialise':
+						foreach( $this->serialiseArray as $serialiseItem )
+						{
+							list($filename, $dataName) = $serialiseItem;
+							file_put_contents($filename, serialize($this->{$dataName}));
+							$msg = "PRIVMSG {$this->args[2]} :Serialised: $dataName.";
+							$this->log( $msg );
+						}
+					break;
+					case ':'.$this->getCommandPrefix().'remember':
+						foreach( $this->serialiseArray as $serialiseItem )
+						{
+							list($filename, $dataName) = $serialiseItem;
+							@$hashCereal = file_get_contents($filename);
+							if($hashCereal !== FALSE) $this->{$dataName} = unserialize($hashCereal);
+							$msg = "PRIVMSG {$this->args[2]} :Remembered: $dataName.";
+							$this->log( $msg );
+						}
+					break;
+				}
+			}
+			////////////////////////
 		
 			/**
 			 *	This section is the initial Nick swap between the bot and the Workhorse,
@@ -249,29 +308,51 @@ class ProcessWorkhorse
 			
 			if ( isset( $args[3] ) )
 			{
-				// Explode the server response and get the command.
-				// $source finds the channel or user that the command
-				// originated.
-				$command = substr( trim( \Library\FunctionCollection::removeLineBreaks( $args[3] ) ), 1 );
-
-				// Check if the response was a command.
-				if ( stripos( $command, $this->commandPrefix ) === 0 )
+				$banned = false;
+				$matches = array();
+				
+				
+				foreach( array_keys($this->bannedUsers) as $bannedUser )
+					if( preg_match("/$bannedUser/", $this->args[0], $matches) )
+						$banned = true;
+				if( !$banned )
 				{
-					$command = strtolower( substr( $command, 1 ) );
+					// Explode the server response and get the command.
+					$command = substr( trim( \Library\FunctionCollection::removeLineBreaks( $args[3] ) ), 1 );
 					
-					if($command == "admin" || $command == "help")
-						continue;
-					
-					// Command does not exist:
-					if ( !array_key_exists( $command, $this->commands ) )
+					/*
+					// Replace ? at the beginning of a message with !wiki as a quick and diry hack //
+					if(strlen($command) > 1 && stripos( $command, '?') === 0)
 					{
-						$this->log( 'The following, not existing, command was called: "' . $command . '".', 'MISSING' );
-						$this->log( 'The following commands are known by the bot: "' . implode( ',', array_keys( $this->commands ) ) . '".', 'MISSING' );
-						continue;
+						if($command[1] != '?' && $command[1] != '!')
+						{
+							$args[3] = substr( $command, 1);
+							array_splice($args, 3, 0, '!wiki');
+							$command = $args[3];
+						}
 					}
-					
-					$this->executeCommand( $command, $args );
-					unset( $args );
+					/////////////////////////////////////////////////////////////////////////////////
+					*/
+
+					// Check if the response was a command.
+					if ( stripos( $command, $this->commandPrefix ) === 0 )
+					{
+						$command = strtolower( substr( $command, 1 ) );
+						
+						if($command == "admin" || $command == "help")
+							continue;
+						
+						// Command does not exist:
+						if ( !array_key_exists( $command, $this->commands ) )
+						{
+							$this->log( 'The following, not existing, command was called: "' . $command . '".', 'MISSING' );
+							$this->log( 'The following commands are known by the bot: "' . implode( ',', array_keys( $this->commands ) ) . '".', 'MISSING' );
+							continue;
+						}
+						
+						$this->executeCommand( $command, $args );
+						unset( $args );
+					}
 				}
 			}
 		}
@@ -388,7 +469,7 @@ class ProcessWorkhorse
 		$this->setChannel( \WorkHorse::get('config')->channels );
 		$this->setName( \WorkHorse::get('config')->name );
 		$this->setNick( \WorkHorse::get('config')->nick );
-		$this->setMaxReconnects( \WorkHorse::get('config')->max_reconnects );
+		//$this->setMaxReconnects( \WorkHorse::get('config')->max_reconnects );
 		$this->setLogFile( \WorkHorse::get('config')->log_file );
 	}
 	
@@ -506,14 +587,6 @@ class ProcessWorkhorse
 	}
 	
 	/**
-	 * Sets the limit of reconnects, before the bot exits.
-	 *
-	 * @param integer $maxReconnects
-	 *			The number of reconnects before the bot exits.
-	 */
-	public function setMaxReconnects( $maxReconnects ) { $this->maxReconnects = (int) $maxReconnects; }
-	
-	/**
 	 * Sets the filepath to the log.
 	 * Specify the folder and a prefix.
 	 * E.g. /Users/yourname/logs/wildbot- That will result in a logfile like the
@@ -597,6 +670,21 @@ class ProcessWorkhorse
 	}
 	
 	/**
+	 * Get the user nickname
+	 * @param string $user
+	 * @return string|boolean
+	 * @author Hoshang Sadiq <superaktieboy@gmail.com>
+	 */
+	private function getUserNickName( $user )
+	{
+		$result = preg_match( '/([a-zA-Z0-9_]+)!/', $user, $matches );
+		
+		if ( $result === 1 ) return $matches[1];
+		
+		return false;
+	}
+	
+	/**
 	 * Returns a specific requested command.
 	 * Please inspect \Library\IRC\Bot::$commands to find out the name
 	 *
@@ -650,4 +738,21 @@ class ProcessWorkhorse
 	 * @return \Library\IRC\Listener\Base
 	 */
 	public function getListener( $listener ) { return $this->listeners[$listener]; }
+	
+	
+	/**
+	 * Returns the filename of the root file.
+	 * This is set in the main pWorkhorse.php
+	 * 	 
+	 * @return string
+	 */
+	public function getRootFileName() { return ROOT_FILE_NAME; }
+	
+	/**
+	 * Returns the directory path to the root file. 
+	 * This is set in the main pWorkhorse.php 
+	 * 
+	 * @return string 
+	 */	 
+	public function getRootDir() { return ROOT_DIR; }
 }
