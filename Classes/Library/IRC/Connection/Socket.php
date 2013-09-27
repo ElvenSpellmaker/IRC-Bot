@@ -23,7 +23,7 @@
 namespace Library\IRC\Connection;
 
 /**
- * Delivers a connection via socket to the IRC server.
+ * Delivers a connection via stream to the IRC server.
  *
  * @package WildBot
  * @subpackage Library
@@ -48,6 +48,11 @@ class Socket implements \Library\IRC\Connection
 	 * The TCP/IP connection.
 	 * @var type
 	 */
+	private $stream;
+	
+	/**
+	 * The raw socket
+	 */ 	 
 	private $socket;
 
 	/**
@@ -60,9 +65,9 @@ class Socket implements \Library\IRC\Connection
 	 */
 	public function connect()
 	{
-		$this->socket = fsockopen( $this->server, $this->port );
-		if (!$this->isConnected())
-			throw new Exception( 'Unable to connect to server via fsockopen with server: "' . $this->server . '" and port: "' . $this->port . '".' );
+		$this->stream = fsockopen( $this->server, $this->port );
+		if ( !$this->isConnected() )
+		 throw new Exception( 'Unable to connect to server via fsockopen with server: "' . $this->server . '" and port: "' . $this->port . '".' );
 	}
 
 	/**
@@ -72,7 +77,7 @@ class Socket implements \Library\IRC\Connection
 	 */
 	public function disconnect()
 	{
-		if ($this->socket) return fclose( $this->socket );
+		if ($this->stream) return fclose( $this->stream );
 		return false;
 	}
 
@@ -82,21 +87,21 @@ class Socket implements \Library\IRC\Connection
 	 *
 	 * @return int|boolean the number of bytes written, or FALSE on error.
 	 */
-	public function sendData( $data ) { return fwrite( $this->socket, $data . "\r\n" ); }
+	public function sendData( $data ) { return fwrite( $this->stream, $data . "\r\n" ); }
 
 	/**
 	 * Returns data from the server.
 	 *
 	 * @return string|boolean The data as string, or false if no data is available or an error occured.
 	 */
-	public function getData() { return fgets( $this->socket, 513 ); }
+	public function getData() { return fgets( $this->stream, 513 ); }
 
 	/**
 	 * Check wether the connection exists.
 	 *
 	 * @return boolean True if the connection exists. False otherwise.
 	 */
-	public function isConnected() { return (is_resource( $this->socket )); }
+	public function isConnected() { return (is_resource( $this->stream )); }
 
 	/**
 	 * Sets the server.
@@ -115,6 +120,16 @@ class Socket implements \Library\IRC\Connection
 	/**
 	 * Sets the connection to non-blocking mode.
 	 */
-	public function setNonBlocking() { socket_set_blocking($this->socket, FALSE); }
-
+	public function setNonBlocking() { stream_set_blocking($this->stream, FALSE); }
+	
+	/**
+	 * Returns the raw stream. 
+	 *
+	 * @return The raw stream.
+	 */ 
+	public function getSocket()
+	{
+		if( !isset( $this->socket ) ) $this->socket = \socket_import_stream( $this->stream );
+		return $this->socket;
+	}
 }
