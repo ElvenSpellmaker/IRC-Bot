@@ -336,7 +336,7 @@ class Bot
 					$queryUser = $queryUser[1];
 
 					
-					if( $args[3] == ":VERSION\r\n" ) $this->sendDataToServer( "NOTICE $queryUser VERSION WildBot (Multi-Process) : v0.1 : PHP 5.5" );
+					if( $args[3] == ":VERSION\r\n" ) $this->sendDataToServer( "NOTICE $queryUser :VERSION WildBot (Multi-Process) : v0.1 : PHP 5.5" );
 				}
 				
 				// Lastly if we have a connection ...
