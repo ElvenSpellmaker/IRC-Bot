@@ -27,7 +27,6 @@ namespace Library\IRC\Connection;
  *
  * @package WildBot
  * @subpackage Library
- * @author Daniel Siepmann <Daniel.Siepmann@wfp2.com>
  */
 class Socket implements \Library\IRC\Connection
 {
@@ -43,16 +42,11 @@ class Socket implements \Library\IRC\Connection
 	 * @var integer
 	 */
 	private $port = 0;
-
-	/**
-	 * The TCP/IP connection.
-	 * @var type
-	 */
-	private $stream;
 	
 	/**
-	 * The raw socket
-	 */ 	 
+	 * The TCP/IP socket.
+	 * @var PHP Socket
+	 */	 
 	private $socket;
 
 	/**
@@ -61,13 +55,14 @@ class Socket implements \Library\IRC\Connection
 	public function __destruct() { $this->disconnect(); }
 
 	/**
-	 * Establishs the connection to the server.
+	 * Establish the connection to the server.
 	 */
 	public function connect()
 	{
-		$this->stream = fsockopen( $this->server, $this->port );
-		if ( !$this->isConnected() )
-		 throw new Exception( 'Unable to connect to server via fsockopen with server: "' . $this->server . '" and port: "' . $this->port . '".' );
+		$this->socket = socket_create( AF_INET, SOCK_STREAM, SOL_TCP );
+		
+		if( ! socket_connect( $this->socket, $this->server, $this->port ) )
+			throw new Exception( 'Unable to connect to server via socket_connect with server: "'. $this->server .'" and port: "'. $this->port .'.' );
 	}
 
 	/**
@@ -77,8 +72,11 @@ class Socket implements \Library\IRC\Connection
 	 */
 	public function disconnect()
 	{
-		if ($this->stream) return fclose( $this->stream );
-		return false;
+		if( $this->isConnected() )
+		{
+			socket_shutdown( $this->socket, 2 );
+			socket_close( $this->socket );
+		}
 	}
 
 	/**
@@ -87,28 +85,51 @@ class Socket implements \Library\IRC\Connection
 	 *
 	 * @return int|boolean the number of bytes written, or FALSE on error.
 	 */
-	public function sendData( $data ) { return fwrite( $this->stream, $data . "\r\n" ); }
+	public function sendData( $data ) { return socket_write( $this->socket, $data . "\r\n" ); }
 
 	/**
 	 * Returns data from the server.
 	 *
-	 * @return string|boolean The data as string, or false if no data is available or an error occured.
+	 * @return string|boolean The data as string, or false if no data is available or an error occurred.
 	 */
-	public function getData() { return fgets( $this->stream, 513 ); }
+	public function getData() { return socket_read( $this->socket, 512 ); }
+	
+	/**
+	 * Returns all the available data from the socket. This will only work with non-blocking connections.
+	 * 
+	 * @return string|boolean The data as a string, FALSE if there is no data available for any reason and empty string '' if the socket has disconnected.
+	 */
+	public function getAllData()
+	{ 
+		$data = '';
+		
+		while ( ($rawData = $this->getData()) !== false )
+		{
+			if( $rawData === '' ) return ''; // The connection has shut down.
+			$data .= $rawData;
+		}
+		
+		if( $data === '' ) return FALSE; // If the message has no data then nothing could be read from the server.
+	
+		$data = explode( "\r\n", $data ); // Explode by new lines which indicate separate messages.
+		foreach( $data as &$line ) $line .= "\r\n"; // Add the new lines back onto the messages.
+		
+		return array_slice( $data, 0, -1 ); // The last message is always an empty string, so don't return it.
+	}
 
 	/**
-	 * Check wether the connection exists.
+	 * Check whether the connection exists.
 	 *
 	 * @return boolean True if the connection exists. False otherwise.
 	 */
-	public function isConnected() { return (is_resource( $this->stream )); }
+	public function isConnected() { return is_resource( $this->socket ); }
 
 	/**
 	 * Sets the server.
 	 * E.g. irc.quakenet.org or irc.freenode.org
 	 * @param string $server The server to set.
 	 */
-	public function setServer( $server ) { $this->server = (string) $server; }
+	public function setServer( $server ) { $this->server = gethostbyname( $server ); }
 
 	/**
 	 * Sets the port.
@@ -119,17 +140,22 @@ class Socket implements \Library\IRC\Connection
 	
 	/**
 	 * Sets the connection to non-blocking mode.
+	 * 
+	 * @return TRUE on success, FALSE on failure.
 	 */
-	public function setNonBlocking() { stream_set_blocking($this->stream, FALSE); }
+	public function setNonBlocking() { return socket_set_nonblock( $this->socket ); }
 	
 	/**
-	 * Returns the raw stream. 
+	 * Sets the socket for this connection Object.
 	 *
-	 * @return The raw stream.
+	 * @param resource The PHP socket object to store.
+	 */
+	public function setSocket( $socket ) { $this->socket = $socket; }
+	
+	/**
+	 * Returns the raw socket. 
+	 *
+	 * @return The raw socket.
 	 */ 
-	public function getSocket()
-	{
-		if( !isset( $this->socket ) ) $this->socket = \socket_import_stream( $this->stream );
-		return $this->socket;
-	}
+	public function getSocket() { return $this->socket; }
 }

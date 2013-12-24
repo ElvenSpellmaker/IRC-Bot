@@ -182,6 +182,7 @@ class Bot
 		if ( $this->connection->isConnected() ) $this->connection->disconnect();
 		
 		$this->connection->connect();
+		$this->connection->setNonBlocking();
 		
 		if(!empty($this->serverPassword)) $this->sendDataToServer( 'PASS ' . $this->serverPassword );
 		$this->sendDataToServer( 'NICK ' . $this->nickToUse );
@@ -215,144 +216,170 @@ class Bot
 		{
 			$read = $clients;
 			
+			$this->log("TEST: BEFORE SOCKET SELECT.");
 			if ( socket_select( $read, $write = NULL, $except = NULL, NULL ) < 1 )
 				continue;
+			$this->log("TEST: AFTER SOCKET SELECT.");
 			
 			// If we don't have a workhorse connection, try to acquire one.
 			if( !$this->workhorseConnection && in_array( $this->botSocket, $read ) )
 			{
-				$this->workhorseConnection = @socket_accept($this->botSocket);
-				if($this->workhorseConnection) // If we managed to get a connection.
+				$workhorseConnection = @socket_accept( $this->botSocket );
+				$this->workhorseConnection = new \Library\IRC\Connection\Socket();
+				$this->workhorseConnection->setSocket( $workhorseConnection );
+				
+				if( $this->workhorseConnection->getSocket()  ) // If we managed to get a connection.
 				{
-					$clients[] = $this->workhorseConnection;
-					socket_set_nonblock($this->workhorseConnection);
-					$nickMSG = 'NICK '. $this->originalNick .'!'. $this->nickToUse ."\r\n"; // Tell the workhorse what our current nickname is compared to the one we saw in the config.
+					$clients[] = $this->workhorseConnection->getSocket();
+					$this->workhorseConnection->setNonBlocking();
+					
+					$nickMSG = 'NICK '. $this->originalNick .'!'. $this->nickToUse; // Tell the workhorse what our current nickname is compared to the one we saw in the config.
 					$this->log($nickMSG);
-					$writeResult = @socket_write($this->workhorseConnection, $nickMSG, strlen($nickMSG));
+					
+					$this->log("TEST: NICKSYNC BEFORE WRITE.");
+					$writeResult = $this->workhorseConnection->sendData( $nickMSG, strlen($nickMSG) );
+					$this->log("TEST: NICKSYNC AFTER WRITE.");
+					
 					if ($writeResult === FALSE)
 					{
-						$key = array_search($this->workhorseConnection, $clients);
-						unset($clients[$key]);
+						$key = array_search( $this->workhorseConnection->getSocket(), $clients );
+						unset( $clients[$key] );
 						$this->workhorseConnection = null; // If we couldn't write then we have lost connection and so need to update that.
 					}
 				}
 			}
 			
-			if( $this->workhorseConnection > 0 && in_array( $this->workhorseConnection, $read ) ) // We have a connection from the workhorse, hoorah!
+			if( is_object( $this->workhorseConnection ) > 0 && in_array( $this->workhorseConnection->getSocket(), $read ) ) // We have a connection from the workhorse, hoorah!
 			{
-				$readResult = @socket_read($this->workhorseConnection, 513); // Read if there is any data from the workhorse.
+				$this->log("TEST: WORKHORSE BEFORE READ.");
+				$readResult = $this->workhorseConnection->getAllData();
+				$this->log("TEST: WORKHORSE AFTER READ.");
 				
 				// NOTE: The manual is WRONG about how the results from the connection are...
 				// FALSE === No data from the socket.
 				// ''	=== The socket is no longer connected.
 				
-				if($readResult !== FALSE && $readResult !== '' ) // If the read didn't fail in any way...
+				if( $readResult === '' ) // If the connection terminated...
 				{
-					$this->connection->sendData($readResult); // ... send the received data to the IRC server.
-					$this->log($readResult);
-				}
-				elseif( $readResult === '' ) // If the connection terminated...
-				{
-					$this->log('NULLIFYING CONNECTION');
+					$key = array_search( $this->workhorseConnection->getSocket(), $clients );
+					unset( $clients[$key] );
 					$this->workhorseConnection = null; // ... nullify the connection.
 				}
+				else
+					foreach( $readResult as $line )
+					{
+						$this->log("TEST: WORKHORSE --> IRC BEFORE WRITE.");
+						$this->connection->sendData( $line ); // ... send the received data to the IRC server.
+						$this->log( $line );
+						$this->log("TEST: WORKHORSE --> IRC AFTER WRITE.");
+					}
 			}
 			
 			if( in_array( $this->connection->getSocket(), $read ) )
 			{
-				$data = $this->connection->getData();
-				
-				echo $data;
-
-				// Get the response from irc:
-				$args = explode( ' ', $data );
-				$this->log( $data );
-				
-				if ( stripos( $data, 'PRIVMSG' ) === FALSE ) // Only do the following if the message hasn't come from a message...
-				{
-					// Nick List //
-					if($args[1] === '353')
-					{
-						$channel = $args[4];
-						
-						$args[5] = substr($args[5], 1); // Strip colon from the first name.
-						
-						//Parse Usernames into List //
-						for($i = 5; $i < count($args) - 1; $i++)
-						{
-							//echo '"', $args[$i], '" "', $i, '"';
-							if(preg_match('/[A-Za-z{}[\]\-\\|^`]/', $args[$i][0]))
-								$nickNames[$channel][''][] = \Library\FunctionCollection::removeLineBreaks( $args[$i] );
-							else
-								$nickNames[$channel][$args[$i][0]][] = \Library\FunctionCollection::removeLineBreaks( substr($args[$i], 1) );
-						}
-						//////////////////////////////
-					}
-					///////////////
-					
-					// Check for some special situations and react:
-					if ( stripos( $data, 'Nickname is already in use.' ) !== FALSE )
-					{
-						// The nickname is in use, create a now one using a counter
-						// and try again.
-						$this->nickToUse = $this->nick . ( ++$this->nickCounter );
-						$this->nick = $this->nickToUse;
-						$this->sendDataToServer( 'NICK ' . $this->nickToUse );
-					}
-					
-					// We're welcome. Let's join the configured channel(s).
-					if ( stripos( $data, 'End of /MOTD command' ) !== false ) $this->join_channel( $this->channel );
-					
-					// Something really went wrong.
-					if ( stripos( $data, 'Registration Timeout' ) !== FALSE || stripos( $data, 'Erroneous Nickname' ) !== FALSE || stripos( $data, 'Closing Link' ) !== FALSE )
-					{
-						// If the error occurs to often, create a log entry and
-						// exit.
-						if ( $this->numberOfReconnects >= (int) $this->maxReconnects )
-						{
-							$this->log( 'Closing Link after "' . $this->numberOfReconnects . '" reconnects.', 'EXIT' );
-							exit();
-						}
-						
-						// Notice the error.
-						$this->log( $data, 'CONNECTION LOST' );
-						// Wait before reconnect ...
-						sleep( 60 );
-						++$this->numberOfReconnects;
-						// ... and reconnect.
-						$this->connection->connect();
-						return;
-					}
-					
-					// Play ping pong with server, to stay connected:
-					if ( $args[0] == 'PING' ) $this->sendDataToServer( 'PONG ' . $args[1] );
-					
-				}
-				
-				if ( $args[1] === 'PRIVMSG' )
-				{
-				
-					preg_match( '/:(.+)!/', $args[0], $queryUser );
-					$queryUser = $queryUser[1];
-
-					
-					if( $args[3] == ":VERSION\r\n" ) $this->sendDataToServer( "NOTICE $queryUser :VERSION WildBot (Multi-Process) : v0.1 : PHP 5.5" );
-				}
-				
-				// Lastly if we have a connection ...
-				if($this->workhorseConnection > 0) // We have a connection from the workhorse, hoorah!
-				{
-					$writeResult = @socket_write($this->workhorseConnection, $data, strlen($data)); // Write the data through to the socket for the workhorse to use.
-					if ($writeResult === FALSE)
-					{
-						$key = array_search($this->workhorseConnection, $clients);
-						unset($clients[$key]);
-						$this->workhorseConnection = null; // If we fail to send then nullify the socket.
-					}
-				}
+				$data = $this->connection->getAllData();
+				if( $data === '' ) die();
+				foreach( $data as $line ) $this->mainHandler( $line, $clients );
 			}
 		}
-	} 
+	}
+	
+	/**
+	 * Main handler for data from the IRC Server.
+	 * 
+	 * @param clients The clients sockets array.
+	 */
+	public function mainHandler( $data, &$clients )
+	{
+		$args = explode( ' ', $data );
+		$this->log( $data );
+		
+		if ( stripos( $data, 'PRIVMSG' ) === FALSE ) // Only do the following if the message hasn't come from a message...
+		{
+			// Nick List //
+			if($args[1] === '353')
+			{
+				$channel = $args[4];
+				
+				$args[5] = substr($args[5], 1); // Strip colon from the first name.
+				
+				//Parse Usernames into List //
+				for($i = 5; $i < count($args) - 1; $i++)
+				{
+					//echo '"', $args[$i], '" "', $i, '"';
+					if(preg_match('/[A-Za-z{}[\]\-\\|^`]/', $args[$i][0]))
+						$nickNames[$channel][''][] = \Library\FunctionCollection::removeLineBreaks( $args[$i] );
+					else
+						$nickNames[$channel][$args[$i][0]][] = \Library\FunctionCollection::removeLineBreaks( substr($args[$i], 1) );
+				}
+				//////////////////////////////
+			}
+			///////////////
+			
+			// Check for some special situations and react:
+			if ( stripos( $data, 'Nickname is already in use.' ) !== FALSE )
+			{
+				// The nickname is in use, create a now one using a counter
+				// and try again.
+				$this->nickToUse = $this->nick . ( ++$this->nickCounter );
+				$this->nick = $this->nickToUse;
+				$this->sendDataToServer( 'NICK ' . $this->nickToUse );
+			}
+			
+			// We're welcome. Let's join the configured channel(s).
+			if ( stripos( $data, 'End of /MOTD command' ) !== false ) $this->join_channel( $this->channel );
+			
+			// Something really went wrong.
+			if ( stripos( $data, 'Registration Timeout' ) !== FALSE || stripos( $data, 'Erroneous Nickname' ) !== FALSE || stripos( $data, 'Closing Link' ) !== FALSE )
+			{
+				// If the error occurs to often, create a log entry and
+				// exit.
+				if ( $this->numberOfReconnects >= (int) $this->maxReconnects )
+				{
+					$this->log( 'Closing Link after "' . $this->numberOfReconnects . '" reconnects.', 'EXIT' );
+					exit();
+				}
+				
+				// Notice the error.
+				$this->log( $data, 'CONNECTION LOST' );
+				// Wait before reconnect ...
+				sleep( 60 );
+				++$this->numberOfReconnects;
+				// ... and reconnect.
+				$this->connection->connect();
+				return;
+			}
+			
+			// Play ping pong with server, to stay connected:
+			if ( $args[0] == 'PING' ) $this->sendDataToServer( 'PONG ' . $args[1] );
+			
+		}
+		
+		if ( $args[1] === 'PRIVMSG' )
+		{
+		
+			preg_match( '/:(.+)!/', $args[0], $queryUser );
+			$queryUser = $queryUser[1];
+
+			
+			if( $args[3] == ":VERSION\r\n" ) $this->sendDataToServer( "NOTICE $queryUser :VERSION WildBot (Multi-Process) : v0.1 : PHP 5.5" );
+		}
+		
+		// Lastly if we have a connection ...
+		if($this->workhorseConnection > 0) // We have a connection from the workhorse, hoorah!
+		{
+			$this->log("TEST: WORKHORSE DATA BEFORE WRITE.");
+			$writeResult = $this->workhorseConnection->sendData( $data ); // Write the data through to the socket for the workhorse to use.
+			$this->log("TEST: WORKHORSE DATA AFTER WRITE.");
+			
+			if ($writeResult === FALSE)
+			{
+				$key = array_search( $this->workhorseConnection->getSocket(), $clients );
+				unset( $clients[$key] );
+				$this->workhorseConnection = null; // If we couldn't write then we have lost connection and so need to update that.
+			}
+		}
+	}
 	
 	/**
 	 * Displays stuff to the broswer and sends data to the server.
@@ -399,7 +426,7 @@ class Bot
 		if ( empty( $status ) ) $status = 'LOG';
 		
 		$msg = date( 'd.m.Y - H:i:s' ) . "\t  [ " . $status . " ] \t" . \Library\FunctionCollection::removeLineBreaks( $log ) . "\r\n";
-		//echo $msg;
+		echo $msg;
 		
 		if ( !is_null( $this->logFileHandler ) ) fwrite( $this->logFileHandler, $msg );
 	}
