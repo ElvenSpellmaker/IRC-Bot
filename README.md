@@ -1,45 +1,20 @@
 # WildBot - IRC Bot
 
-NOTE: This Readme is very out of date and needs a big update which will happen soon.
+***NOTE: This version of the bot is experimental and has been working for two years fine. I am in the process of re-writing the bot for a newer, better, version.***
 
-A IRC Bot built in PHP (using sockets) with OOP. Designed to run off a local LAMP, WAMP, or MAMP stack.
-Includes a custom [Upstart](http://upstart.ubuntu.com/) script to run as Linux daemon.
+### Commands
 
-Web
--------
-* Official Website: [http://wildphp.com](http://wildphp.com), Source Code: [Github](https://github.com/pogosheep/IRC-Bot)
-* Major Contributors: [Super3](http://super3.org), [Pogosheep](http://layne-obserdia.de), [Matejvelikonja](http://velikonja.si)
-
-## Features and Functions
-
-### Standard Commands
-
-* !say [#channel] [message] - Says message in the specified IRC channel.
-* !say [username] [message] - Says message in the specified IRC user.
-* !join [#channel] - Joins the specified channel.
-* !part [#channel] - Parts the specified channel.
-* !timeout [seconds] - Bot leaves for the specified number of seconds.
-* !restart - Quits and restarts the script.
-* !quit - Quits and stops the script.
-* /msg [botname] !admin [password] - Identify as the admin. 
-
-### Entended Commands
-
-* !ip - Returns IP of a user.
-* !weather [location] - Returns weather data for location.
-* !poke [#channel] [username] - Pokes the specified IRC user.
-* !joke - Returns random joke. Fetched from [ICNDb.com](http://www.icndb.com/).
-* !imdb [movie title] - Searches for movie and returns it's information.
-
+Commands start with a command prefix (default !) and get triggered when someone uses the command prefix with the name of the command.
 
 ### Listeners
 
-
-* Joins - Greets users when they join the channel.
+Listeners listen on specific events from the server and then get triggered when those are fulfilled, such as PRIVMSG.
 
 ## Install & Run
 
 ### Dependecy
+
+Currently *only* *nix like systems are supported, this is due to UNIX sockets being used as the communication method for the bot's two halves. This includes Cygwin and Cygwin's PHP.
 
 proctitle (optional) - Changes the process title when running as service.
 
@@ -51,27 +26,14 @@ Copy configuration file and customize its content.
 
     cp config.php config.local.php
 
-Copy Upstart script to folder and make appropriate changes.
-
-    sudo cp bin/wildbot.conf /etc/init/
-
 ### Run
 
 Run as PHP
 
-    php wildbot.php
+    php wildbot.php - For the front-end.
+	php pWorkhorse.php - For the back-end.
 
-or Upstart service
-
-    start wildbot
-
-Restart
-
-    restart wildbot
-
-Stop
-
-    stop wildbot
+If you want to re-load plug-ins only the back-end needs to be killed and restarted, this will keep your bot in the channels responding to PING requests.
 
 Sample Usage and Output
 -------

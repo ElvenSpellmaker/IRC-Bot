@@ -44,8 +44,8 @@ class Poke extends \Library\IRC\Command\Base {
 	{
 		//var_dump($this->arguments);
 		
-		if( $this->arguments[1] != '' )
-			$this->doAction( 'pokes ' . trim( $this->arguments[1] ) . ' (' . $this->queryUser . ')' );
+		if( trim( $this->arguments[1] != '' ) )
+			$this->doAction( 'pokes ' . trim( $this->arguments[1] ) . ' (' . $this->queryUser . ')', $this->arguments[0] );
 		else if( count($this->arguments) == 1 )
 			$this->doAction( 'pokes ' . trim( $this->arguments[0] ) . ' (' . $this->queryUser . ')' );
 	}

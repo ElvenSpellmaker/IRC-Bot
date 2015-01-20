@@ -1,4 +1,5 @@
 <?php
+
 /**
  * WildBot
  *
@@ -14,8 +15,9 @@
  * @subpackage Library
  *
  * @author Daniel Siepmann <coding.layne@me.com>
- * @author Jack Blower <Jack@elvenspellmaker.co.uk>  
+ * @author Jack Blower <Jack@elvenspellmaker.co.uk>
  */
+
 namespace Library\IRC;
 
 /**
@@ -23,10 +25,10 @@ namespace Library\IRC;
  *
  * @package WildBot
  * @subpackage Library
- *			
+ *
  * @author Super3 <admin@wildphp.com>
  * @author Daniel Siepmann <coding.layne@me.com>
- * @author Jack Blower <Jack@elvenspellmaker.co.uk> 
+ * @author Jack Blower <Jack@elvenspellmaker.co.uk>
  */
 class ProcessWorkhorse
 {
@@ -34,82 +36,82 @@ class ProcessWorkhorse
 	/**
 	 * Holds the bot connectionName
 	 */
-	 private $socketName = '';
-	 
+	private $socketName = '';
+
 	/**
 	 * Holds the server connection.
 	 *
 	 * @var \Library\IRC\Connection
 	 */
 	private $socket = null;
-	
+
 	/**
 	 * serverPassword
 	 */
 	private $serverPassword = '';
-	
+
 	/**
 	 * adminPassword
 	 */
 	private $adminPassword = '';
-	
+
 	/**
 	 * A list of all channels the bot should connect to.
 	 */
-	private $channel = array ();
-	
+	private $channel = array();
+
 	/**
 	 * The name of the bot.
 	 *
 	 * @var string
 	 */
 	private $name = '';
-	
+
 	/**
 	 * The nick of the bot.
 	 */
 	private $nick = '';
-	
+
 	/**
 	 * Complete file path to the log file.
 	 * Configure the path, the filename is generated and added.
 	 */
 	private $logFile = '';
-	
+
 	/**
 	 * Defines the prefix for all commands interacting with the bot.
 	 */
 	private $commandPrefix = '!';
-	
+
 	/**
 	 * All available commands.
 	 * Commands are type of IRCCommand
 	 */
-	private $commands = array ();
-	
+	private $commands = array();
+
 	/**
 	 * All available listeners.
 	 * Listeners are type of IRCListener
 	 */
-	private $listeners = array ();
-	
+	private $listeners = array();
+
 	/**
 	 * All admins will be stored here
 	 */
-	private $admins = array ();
-	
+	private $admins = array();
+
 	/**
 	 * All banned users will be stored here
 	 */
-	private $bannedUsers = array ();
-	
+	private $bannedUsers = array();
+
 	/**
 	 * Contains a 2D array
 	 * Indexes denote things to be serialised.
 	 * 	--> The file name to store under.
 	 *  --> What variable to store.
 	 */
-	private $serialiseArray = array ();
+	private $serialiseArray = array();
 
 	/**
 	 * Holds the reference to the file.
@@ -117,11 +119,11 @@ class ProcessWorkhorse
 	private $logFileHandler = null;
 	private static $commandString = 'Command';
 	private static $listenerString = 'Listener';
-	private static $serialiseStrings = array (
-			'Serialise End' => 'successfully serialised!',
-			'Serialise End Fail' => 'didn\'t serialise!',
-			'Remember End' => 'successfully remebered all it can!',
-			'Remember End Fail' => 'could not remember anything!' 
+	private static $serialiseStrings = array(
+		'Serialise End' => 'successfully serialised!',
+		'Serialise End Fail' => 'didn\'t serialise!',
+		'Remember End' => 'successfully remebered all it can!',
+		'Remember End Fail' => 'could not remember anything!'
 	);
 
 	/**
@@ -129,35 +131,37 @@ class ProcessWorkhorse
 	 */
 	public function __destruct()
 	{
-		if ( $this->logFileHandler ) fclose( $this->logFileHandler );
-		
-		/*if($this->socket != null)
-		{
-			socket_shutdown($this->socket);
-			socket_close($this->socket);
-			unlink($this->socket);
-		}
-		This isn't working, for one reason or another. */
+		if ($this->logFileHandler)
+			fclose($this->logFileHandler);
+
+		/* if($this->socket != null)
+		  {
+		  socket_shutdown($this->socket);
+		  socket_close($this->socket);
+		  unlink($this->socket);
+		  }
+		  This isn't working, for one reason or another. */
 	}
-	
+
 	/**
 	 * Connects to the server in the config and starts the workhorse once a connection is found.
 	 */
 	public function connectToServerAndStart()
 	{
-		while(true)
+		while (true)
 		{
-			$this->socket = @fsockopen( 'unix:///tmp/'. $this->socketName, NULL );
-			
-			if (!is_resource( $this->socket ) )
+			$this->socket = @fsockopen('unix:///tmp/' . $this->socketName, NULL);
+
+			if (!is_resource($this->socket))
 			{
-				echo 'Unable to connect to server via fsockopen with server: "' . $this->socketName ."\".\r\n";
+				echo 'Unable to connect to server via fsockopen with server: "' . $this->socketName . "\".\r\n";
 				sleep(1); // Wait a second before trying again.
 			}
-			else $this->main(); // Run the workhorse because we have a bot connection.
+			else
+				$this->main(); // Run the workhorse because we have a bot connection.
 		}
 	}
-	
+
 	/**
 	 * This is the workhorse function, grabs the data from the server and
 	 * displays on the browser
@@ -165,39 +169,42 @@ class ProcessWorkhorse
 	 * @author Super3 <admin@wildphp.com>
 	 * @author Daniel Siepmann <coding.layne@me.com>
 	 * @author Hoshang Sadiq <superaktieboy@gmail.com>
-	 * @author Jack Blower <Jack@elvenspellmaker.co.uk> 
+	 * @author Jack Blower <Jack@elvenspellmaker.co.uk>
 	 */
 	private function main()
 	{
-	
 		$command = '';
-		$arguments = array ();
 		$arr = array();
 		$this->serialiseArray[0][0] = 'cerealeyes/BannedUsersHash.jack';
 		$this->serialiseArray[0][1] = 'bannedUsers';
 
-		while(true)
+		while (true)
 		{
 			do
 			{
-				$data = fgets( $this->socket, 513 );
+				$data = fgets($this->socket, 513);
 				$arr = stream_get_meta_data($this->socket);
-			} while ($arr['timed_out']);
-			
-			if($data === FALSE) return; // The main bot has terminated. Return to try again to connect.
-			
+			}
+			while ($arr['timed_out']);
+
+			if ($data === FALSE)
+				return; // The main bot has terminated. Return to try again to connect.
+
+			if ($data === "\r\n")
+				continue;
+
 			// Get the response from irc:
-			$args = explode( ' ', $data );
-			$this->log( $data );
-			
+			$args = explode(' ', $data);
+			$this->log($data);
+
 			$this->args = $args;
 
 			// Admins //
-			if($this->args[1] === 'PRIVMSG' && $this->args[2] == $this->getNick() && (count($this->args) == 4 || count($this->args) == 5))
+			if ($this->args[1] === 'PRIVMSG' && $this->args[2] == $this->getNick() && (count($this->args) == 4 || count($this->args) == 5))
 			{
-				if($this->args[3] == ':'.$this->getCommandPrefix().'admin')
+				if ($this->args[3] == ':' . $this->getCommandPrefix() . 'admin')
 				{
-					if(isset($this->args[4]) && $this->adminPassword == trim($this->args[4]))
+					if (isset($this->args[4]) && $this->adminPassword == trim($this->args[4]))
 						$this->setAdmin($this->args[0]);
 					else
 						$this->removeAdmin($this->args[0]);
@@ -205,361 +212,392 @@ class ProcessWorkhorse
 				}
 			}
 			////////////
-
 			// Bans //
-			if( $this->args[1] === 'PRIVMSG' && $this->getAdmins($this->args[0]) && count($this->args) >= 4 )
+			if ($this->args[1] === 'PRIVMSG' && $this->getAdmins($this->args[0]) && count($this->args) >= 4)
 			{
-				switch($this->args[3])
+				switch ($this->args[3])
 				{
-					case ':'.$this->getCommandPrefix().'ban':
-						for( $i = 4; $i < count( $this->args ); $i++ )
+					case ':' . $this->getCommandPrefix() . 'ban':
+						for ($i = 4; $i < count($this->args); $i++)
 						{
-							$this->bannedUsers[trim( $this->args[$i] )] = 1;
+							$this->bannedUsers[trim($this->args[$i])] = 1;
 							$msg = "PRIVMSG {$this->args[2]} :Added the ban.";
-							$this->log( $msg );
-							fwrite( $this->socket, $msg . "\r\n" );
+							$this->log($msg);
+							fwrite($this->socket, $msg . "\r\n");
 						}
-					continue 2;
-					case ':'.$this->getCommandPrefix().'unban':
-						for( $i = 4; $i < count( $this->args ); $i++ )
+						continue 2;
+					case ':' . $this->getCommandPrefix() . 'unban':
+						for ($i = 4; $i < count($this->args); $i++)
 						{
-							unset($this->bannedUsers[trim( $this->args[$i] )]);
+							unset($this->bannedUsers[trim($this->args[$i])]);
 							$msg = "PRIVMSG {$this->args[2]} :Removed the ban.";
-							$this->log( $msg );
-							fwrite( $this->socket, $msg . "\r\n" );
+							$this->log($msg);
+							fwrite($this->socket, $msg . "\r\n");
 							$trigger = true;
 						}
-					continue 2;
+						continue 2;
 				}
 			}
 			//////////
-			
 			// Help //
-			if($this->args[1] === 'PRIVMSG' && (count($this->args) == 5 || count($this->args) == 6))
+			if ($this->args[1] === 'PRIVMSG' && (count($this->args) == 5 || count($this->args) == 6))
 			{
-				if($this->args[3] == ':'.$this->getCommandPrefix().'help')
+				if ($this->args[3] == ':' . $this->getCommandPrefix() . 'help')
 				{
 					$this->getHelp(false); // Someone has generically asked for help! e.g. !help <foo>
 					continue;
-				} else if($this->args[3] == ':'. $this->getNick() .':' && strtolower(trim($this->args[4])) == 'help')
+				}
+				else if ($this->args[3] == ':' . $this->getNick() . ':' && strtolower(trim($this->args[4])) == 'help')
 				{
 					$this->getHelp(true); // Someone has addressed us for help! e.g. Cirno: help <foo>
 					continue;
 				}
 			}
 			//////////
-			
 			// Serialisation Hook //
-			if( $this->args[1] === 'PRIVMSG' && $this->getAdmins($this->getUserNickName($this->args[2])) && count($this->args) == 4 )
+			if ($this->args[1] === 'PRIVMSG' && $this->getAdmins($this->getUserNickName($this->args[2])) && count($this->args) == 4)
 			{
-				switch( trim( $this->args[3] ) )
+				switch (trim($this->args[3]))
 				{
-					case ':'.$this->getCommandPrefix().'serialise':
-						foreach( $this->serialiseArray as $serialiseItem )
+					case ':' . $this->getCommandPrefix() . 'serialise':
+						foreach ($this->serialiseArray as $serialiseItem)
 						{
 							list($filename, $dataName) = $serialiseItem;
 							file_put_contents($filename, serialize($this->{$dataName}));
 							$msg = "PRIVMSG {$this->args[2]} :Serialised: $dataName.";
-							$this->log( $msg );
+							$this->log($msg);
 						}
-					break;
-					case ':'.$this->getCommandPrefix().'remember':
-						foreach( $this->serialiseArray as $serialiseItem )
+						break;
+					case ':' . $this->getCommandPrefix() . 'remember':
+						foreach ($this->serialiseArray as $serialiseItem)
 						{
 							list($filename, $dataName) = $serialiseItem;
 							@$hashCereal = file_get_contents($filename);
-							if($hashCereal !== FALSE) $this->{$dataName} = unserialize($hashCereal);
+							if ($hashCereal !== FALSE)
+								$this->{$dataName} = unserialize($hashCereal);
 							$msg = "PRIVMSG {$this->args[2]} :Remembered: $dataName.";
-							$this->log( $msg );
+							$this->log($msg);
 						}
-					break;
+						break;
 				}
 			}
 			////////////////////////
-		
+
 			/**
-			 *	This section is the initial Nick swap between the bot and the Workhorse,
+			 * 	This section is the initial Nick swap between the bot and the Workhorse,
 			 *  this tries to make sure the nick is correct assuming the config nick is taken.
 			 */
-			if($this->args[0] === 'NICK')
+			if ($this->args[0] === 'NICK')
 			{
 				$explodedNicks = explode('!', $this->args[1]);
 				$this->nick = ($this->nick === trim($explodedNicks[0])) ? trim($explodedNicks[1]) : $this->nick;
-				$this->log('NICK SYNC: '. $this->nick);
+				$this->log('NICK SYNC: ' . $this->nick);
 			}
-			
-			if($this->args[1] === 'NICK')
+
+			if ($this->args[1] === 'NICK')
 			{
 				$this->updateNick($this->args[0], $this->args[2]);
 				$this->adminChange($this->args[0], $this->args[2]);
 			}
-			
-			if($this->args[1] === 'QUIT' || $this->args[1] === 'PART')
+
+			if ($this->args[1] === 'QUIT' || $this->args[1] === 'PART')
 				$this->removeAdmin($this->args[0]);
 
 			/* @var $listener \Library\IRC\Listener\Base */
-			foreach ( $this->listeners as $listener )
-				if ( is_array( $listener->getKeywords() ) )
-					foreach ( $listener->getKeywords() as $keyword )
-						// compare listeners keyword and 1st arguments of server
-						// response
-						if ( $keyword === $args[1] )
-							$listener->setIRCConnection( $this->socket )->setArgs( $args )->execute( $data );
-			
-			if ( isset( $args[3] ) )
+			foreach ($this->listeners as $listener)
+				if (is_array($listener->getKeywords()))
+					foreach ($listener->getKeywords() as $keyword)
+					// compare listeners keyword and 1st arguments of server
+					// response
+						if ($keyword === $args[1])
+							$listener->setIRCConnection($this->socket)->setArgs($args)->execute($data);
+
+			if (isset($args[3]))
 			{
 				$banned = false;
 				$matches = array();
-				
-				
-				foreach( array_keys($this->bannedUsers) as $bannedUser )
-					if( preg_match("/$bannedUser/", $this->args[0], $matches) )
+
+				foreach (array_keys($this->bannedUsers) as $bannedUser)
+					if (preg_match("/$bannedUser/", $this->args[0], $matches))
 						$banned = true;
-				if( !$banned )
+				if (!$banned)
 				{
 					// Explode the server response and get the command.
-					$command = substr( trim( \Library\FunctionCollection::removeLineBreaks( $args[3] ) ), 1 );
-					
-					/*
-					// Replace ? at the beginning of a message with !wiki as a quick and diry hack //
-					if(strlen($command) > 1 && stripos( $command, '?') === 0)
-					{
-						if($command[1] != '?' && $command[1] != '!')
-						{
-							$args[3] = substr( $command, 1);
-							array_splice($args, 3, 0, '!wiki');
-							$command = $args[3];
-						}
-					}
-					/////////////////////////////////////////////////////////////////////////////////
-					*/
+					$command = substr(trim(\Library\FunctionCollection::removeLineBreaks($args[3])), 1);
+
+
+					/* // Replace ? at the beginning of a message with !wiki as a quick and diry hack //
+					  if(strlen($command) > 1 && stripos( $command, '?') === 0)
+					  {
+					  if($command[1] != '?' && $command[1] != '!')
+					  {
+					  $args[3] = substr( $command, 1);
+					  array_splice($args, 3, 0, '!wiki');
+					  $command = $args[3];
+					  }
+					  }
+					  ///////////////////////////////////////////////////////////////////////////////// */
 
 					// Check if the response was a command.
-					if ( stripos( $command, $this->commandPrefix ) === 0 )
+					if (stripos($command, $this->commandPrefix) === 0)
 					{
-						$command = strtolower( substr( $command, 1 ) );
-						
-						if($command == "admin" || $command == "help")
+						$command = strtolower(substr($command, 1));
+
+						if ($command == "admin" || $command == "help")
 							continue;
-						
+
 						// Command does not exist:
-						if ( !array_key_exists( $command, $this->commands ) )
+						if (array_key_exists($command, $this->commands))
 						{
-							$this->log( 'The following, not existing, command was called: "' . $command . '".', 'MISSING' );
-							$this->log( 'The following commands are known by the bot: "' . implode( ',', array_keys( $this->commands ) ) . '".', 'MISSING' );
-							continue;
+							$this->executeCommand($command, $args);
+							unset($args);
 						}
-						
-						$this->executeCommand( $command, $args );
-						unset( $args );
 					}
 				}
 			}
 		}
 	}
-	
+
 	/**
 	 * Gets help for a command.
 	 */
 	private function getHelp($isAddressingMe)
 	{
 		$position = $isAddressingMe ? 5 : 4;
-		
-		$command = trim( \Library\FunctionCollection::removeLineBreaks( $this->args[$position] ) );
-		if( array_key_exists( $command, $this->commands ) )
-		{	
-			$help = $this->commands[$command]->getHelp();
-			$toChan = trim($this->args[2]);
-			$nick = ltrim(substr($this->args[0], 0, strpos($this->args[0], '!')), ':');
-			$msg = 'PRIVMSG '. $toChan .' :'. $nick .': '. $help;
-			
-			$this->log( $msg );
-			fwrite( $this->socket, $msg . "\r\n" );
+		$output = null;
+
+		if ($isAddressingMe && !isset($this->args[5]))
+		{
+			$output = [
+				'Commands: ' . implode(', ', array_keys($this->commands)) . '.',
+				'Listeners: ' . implode(', ', array_keys($this->listeners)) . '.'
+			];
+		}
+
+		$command = ltrim(\Library\FunctionCollection::removeLineBreaks($this->args[$position]));
+		if (array_key_exists($command, $this->commands))
+		{
+			$output = $this->commands[$command]->getHelp();
+		}
+
+		if ($output)
+		{
+			$output = is_array($output) ? $output : [$output];
+
+			foreach ($output as $message)
+			{
+				$toChan = trim($this->args[2]);
+				$nick = ltrim(substr($this->args[0], 0, strpos($this->args[0], '!')), ':');
+				$msg = 'PRIVMSG ' . $toChan . ' :' . $nick . ': ' . $message;
+
+				$this->log($msg);
+				fwrite($this->socket, $msg . "\r\n");
+			}
 		}
 	}
-	
+
 	/**
 	 * Adds a single command to the bot.
 	 *
 	 * @param IRCCommand $command
-	 *			The command to add.
+	 * 			The command to add.
 	 * @author Daniel Siepmann <coding.layne@me.com>
 	 */
-	public function addCommand(\Library\IRC\Command\Base $command )
+	public function addCommand(\Library\IRC\Command\Base $command)
 	{
-		$commandName = strtolower( $this->getClassName( $command ) );
-		$command->setIRCConnection( $this->socket );
-		$command->setIRCBot( $this );
+		$commandName = strtolower($this->getClassName($command));
+		$command->setIRCConnection($this->socket);
+		$command->setIRCBot($this);
 		$this->commands[$commandName] = $command;
-		$this->log( 'The following Command was added to the Bot: "' . $commandName . '".', 'INFO' );
+		$this->log('The following Command was added to the Bot: "' . $commandName . '".', 'INFO');
 	}
-	
+
 	/**
 	 * Executes a command.
 	 */
-	protected function executeCommand( $commandName, $args )
+	protected function executeCommand($commandName, $args)
 	{
 		// Execute command:
 		$command = $this->commands[$commandName];
-		$command->setIRCConnection( $this->socket )->setArgs( $args )->executeCommand();
+		$command->setIRCConnection($this->socket)->setArgs($args)->executeCommand();
 	}
-	
-	
-	public function addListener(\Library\IRC\Listener\Base $listener )
+
+	public function addListener(\Library\IRC\Listener\Base $listener)
 	{
-		$listenerName = $this->getClassName( $listener );
-		$listener->setIRCConnection( $this->socket );
-		$listener->setIRCBot( $this );
+		$listenerName = $this->getClassName($listener);
+		$listener->setIRCConnection($this->socket);
+		$listener->setIRCBot($this);
 		$this->listeners[$listenerName] = $listener;
-		$this->log( 'The following Listener was added to the Bot: "' . $listenerName . '".', 'INFO' );
+		$this->log('The following Listener was added to the Bot: "' . $listenerName . '".', 'INFO');
 	}
-	
+
 	/**
 	 * Returns class name of $object without namespace
 	 *
-	 * @param mixed $object			
+	 * @param mixed $object
 	 * @author Matej Velikonja <matej@velikonja.si>
 	 * @return string
 	 */
-	private function getClassName( $object )
+	public function getClassName($object)
 	{
-		$objectName = explode( '\\', get_class( $object ) );
-		$objectName = $objectName[count( $objectName ) - 1];
-		
+		$objectName = explode('\\', get_class($object));
+		$objectName = $objectName[count($objectName) - 1];
+
 		return $objectName;
 	}
-	
+
 	/**
 	 * Adds a log entry to the log file.
 	 *
 	 * @param string $log
-	 *			The log entry to add.
+	 * 			The log entry to add.
 	 * @param string $status
-	 *			The status, used to prefix the log entry.
-	 *			
+	 * 			The status, used to prefix the log entry.
+	 *
 	 * @author Daniel Siepmann <coding.layne@me.com>
 	 */
-	public function log( $log, $status = '' )
+	public function log($log, $status = '')
 	{
-		if ( empty( $status ) ) {
+		if (empty($status))
+		{
 			$status = 'LOG';
 		}
-		
-		$msg = date( 'd.m.Y - H:i:s' ) . "\t  [ " . $status . " ] \t" . \Library\FunctionCollection::removeLineBreaks( $log ) . "\r\n";
-		
+
+		$msg = date('d.m.Y - H:i:s') . "\t  [ " . $status . " ] \t" . \Library\FunctionCollection::removeLineBreaks($log) . "\r\n";
+
 		echo $msg;
-		
-		if ( !is_null( $this->logFileHandler ) ) fwrite( $this->logFileHandler, $msg );
+
+		if (!is_null($this->logFileHandler))
+			fwrite($this->logFileHandler, $msg);
 	}
 
 	// Setters
-	
+
 	/**
 	 * Sets the whole configuration.
 	 *
 	 * @param array $configuration
-	 *			The whole configuration, you can use the setters, too.
+	 * 			The whole configuration, you can use the setters, too.
 	 * @author Daniel Siepmann <coding.layne@me.com>
 	 */
-	public function configure() {
-		$this->setSocketName( \WorkHorse::get('config')->socketName );
-		$this->setServerPassword( \WorkHorse::get('config')->serverPassword );
-		$this->setAdminPassword( \WorkHorse::get('config')->adminPassword );
-		$this->setCommandPrefix( \WorkHorse::get('config')->commandPrefix );
-		$this->setChannel( \WorkHorse::get('config')->channels );
-		$this->setName( \WorkHorse::get('config')->name );
-		$this->setNick( \WorkHorse::get('config')->nick );
+	public function configure()
+	{
+		$this->setSocketName(\WorkHorse::get('config')->socketName);
+		$this->setServerPassword(\WorkHorse::get('config')->serverPassword);
+		$this->setAdminPassword(\WorkHorse::get('config')->adminPassword);
+		$this->setCommandPrefix(\WorkHorse::get('config')->commandPrefix);
+		$this->setChannel(\WorkHorse::get('config')->channels);
+		$this->setName(\WorkHorse::get('config')->name);
+		$this->setNick(\WorkHorse::get('config')->nick);
 		//$this->setMaxReconnects( \WorkHorse::get('config')->max_reconnects );
-		$this->setLogFile( \WorkHorse::get('config')->log_file );
+		$this->setLogFile(\WorkHorse::get('config')->log_file);
 	}
-	
+
 	/**
 	 * Sets the socket name for bot communication.
 	 *
 	 * @param string $sn
-	 *			The socket to set.
+	 * 			The socket to set.
 	 */
-	public function setSocketName( $sn) { $this->socketName = $sn; }
-	
+	public function setSocketName($sn)
+	{
+		$this->socketName = $sn;
+	}
+
 	/**
 	 * Sets the server password for connecting to the server.
 	 *
 	 * @param string $server
-	 *			The server to set.
+	 * 			The server to set.
 	 */
-	public function setServerPassword( $password ) { $this->serverPassword = $password; }
-	
+	public function setServerPassword($password)
+	{
+		$this->serverPassword = $password;
+	}
+
 	/**
 	 * Sets the admin password for connecting to the server.
 	 *
 	 * @param string $password
 	 */
-	public function setAdminPassword( $password ) { $this->adminPassword = $password; }
-	
+	public function setAdminPassword($password)
+	{
+		$this->adminPassword = $password;
+	}
+
 	/**
 	 * Sets the channel.
 	 * E.g. '#testchannel' or array('#testchannel','#helloWorldChannel')
 	 *
 	 * @param string|array $channel
-	 *			The channel as string, or a set of channels as array.
+	 * 			The channel as string, or a set of channels as array.
 	 */
-	public function setChannel( $channel ) { $this->channel = (array) $channel; }
-	
+	public function setChannel($channel)
+	{
+		$this->channel = (array) $channel;
+	}
+
 	/**
 	 * Sets the name of the bot.
 	 * "Yes give me a name!"
 	 *
 	 * @param string $name
-	 *			The name of the bot.
+	 * 			The name of the bot.
 	 */
-	public function setName( $name ) { $this->name = (string) $name; }
-	
+	public function setName($name)
+	{
+		$this->name = (string) $name;
+	}
+
 	/**
 	 * Sets the nick of the bot.
 	 * "Yes give me a nick too. I love nicks."
 	 *
 	 * @param string $nick
-	 *			The nick of the bot.
+	 * 			The nick of the bot.
 	 */
-	public function setNick( $nick ) { $this->nick = (string) $nick; }
-	
-	public function updateNick( $oldNick, $newNick )
+	public function setNick($nick)
 	{
-		$oldNick = explode('!', $oldNick );
-		$oldNick = explode(':', $oldNick[0] );
-		$newNick = explode(':', $newNick );
-	
-		if($this->nick == $oldNick[1])
+		$this->nick = (string) $nick;
+	}
+
+	public function updateNick($oldNick, $newNick)
+	{
+		$oldNick = explode('!', $oldNick);
+		$oldNick = explode(':', $oldNick[0]);
+		$newNick = explode(':', $newNick);
+
+		if ($this->nick == $oldNick[1])
 			$this->nick = $newNick[1];
 	}
-	
+
 	/**
 	 * Set a user as an admin
 	 *
 	 * @param string $user
-	 *			The user to set as admin.
+	 * 			The user to set as admin.
 	 */
-	public function setAdmin( $user )
+	public function setAdmin($user)
 	{
-		if(!isset($this->admins[(string) $user]))
+		if (!isset($this->admins[(string) $user]))
 		{
 			$this->admins[(string) $user] = true;
 			$nick = ltrim(substr($user, 0, strpos($user, '!')), ':');
-			$this->log( 'User '.$user.' was added to admin list.' );
-			$msg = 'PRIVMSG '.$nick.' :You are now admin. For security reasons, do not close this window.';
-			fwrite( $this->socket, $msg . "\r\n" );
+			$this->log('User ' . $user . ' was added to admin list.');
+			$msg = 'PRIVMSG ' . $nick . ' :You are now admin. For security reasons, do not close this window.';
+			fwrite($this->socket, $msg . "\r\n");
 		}
 		return $this;
 	}
-	
+
 	/**
-	 * Changes an admin's name to $newnick whose old name was $user. 
+	 * Changes an admin's name to $newnick whose old name was $user.
 	 */
 	public function adminChange($user, $newnick)
 	{
-		if(isset($this->admins[(string) $user]))
+		if (isset($this->admins[(string) $user]))
 		{
-			$newuser = trim($newnick).substr($user, strpos($user, '!'));
+			$newuser = trim($newnick) . substr($user, strpos($user, '!'));
 			$this->removeAdmin($user)->setAdmin($newuser);
 		}
 		return $this;
@@ -568,12 +606,12 @@ class ProcessWorkhorse
 	/**
 	 * Removes an admin from the admin list.
 	 */
-	public function removeAdmin( $user ) 
+	public function removeAdmin($user)
 	{
-		if(isset($this->admins[(string) $user]))
+		if (isset($this->admins[(string) $user]))
 		{
 			unset($this->admins[(string) $user]);
-			$this->log( 'User '.$user.' was removed from admin list.' );
+			$this->log('User ' . $user . ' was removed from admin list.');
 		}
 		return $this;
 	}
@@ -581,11 +619,11 @@ class ProcessWorkhorse
 	/**
 	 * Returns a list of admins if no argument is specified, else it returns if the user is an admin or not.
 	 */
-	public function getAdmins( $user = null )
+	public function getAdmins($user = null)
 	{
 		return $user == null ? $this->admins : (isset($this->admins[$user]) ? $this->admins[$user] : false);
 	}
-	
+
 	/**
 	 * Sets the filepath to the log.
 	 * Specify the folder and a prefix.
@@ -594,52 +632,59 @@ class ProcessWorkhorse
 	 * /Users/yourname/logs/wildbot-11-12-2012.log
 	 *
 	 * @param string $logFile
-	 *			The filepath and prefix for a logfile.
+	 * 			The filepath and prefix for a logfile.
 	 */
-	public function setLogFile( $logFile )
+	public function setLogFile($logFile)
 	{
 		$this->logFile = (string) $logFile;
-		if ( !empty( $this->logFile ) )
+		if (!empty($this->logFile))
 		{
-			$logFilePath = dirname( $this->logFile );
-			if ( !is_dir( $logFilePath ) ) mkdir( $logFilePath, 0600, true );
-			
-			$this->logFile .= date( 'd-m-Y' ) . '.log';
-			$this->logFileHandler = fopen( $this->logFile, 'w+' );
+			$logFilePath = dirname($this->logFile);
+			if (!is_dir($logFilePath))
+				mkdir($logFilePath, 0600, true);
+
+			$this->logFile .= date('d-m-Y') . '.log';
+			$this->logFileHandler = fopen($this->logFile, 'w+');
 		}
 	}
-	
+
 	/**
 	 * Allows plug-ins to serliase to files, if they don't have a serialise
 	 * method then they won't serialise.
 	 *
 	 * @author Jack Blower <Jack@elvenspellmaker.co.uk>
 	 */
-	public function serialise() { $this->serialRemMain( "serialise" ); }
-	
+	public function serialise()
+	{
+		$this->serialRemMain("serialise");
+	}
+
 	/**
 	 * Allows plug-ins to remember data, if they don't have a remember method
 	 * then they won't try to load anything.
 	 *
 	 * @author Jack Blower <Jack@elvenspellmaker.co.uk>
 	 */
-	public function remember() { $this->serialRemMain( "remember" ); }
-	
+	public function remember()
+	{
+		$this->serialRemMain("remember");
+	}
+
 	/**
 	 * Performs serialisation or remembering across all listeners and commands
 	 * if they have implemented this.
 	 *
 	 * @param string $serialOrRem
-	 *			serialise or remember.
+	 * 			serialise or remember.
 	 * @author Jack Blower <Jack@elvenspellmaker.co.uk>
 	 */
-	private function serialRemMain( $serialOrRem )
+	private function serialRemMain($serialOrRem)
 	{
-		foreach ( $this->listeners as $listener )
-			$this->serialRemLoop( $serialOrRem, self::$listenerString, $listener );
-		
-		foreach ( $this->commands as $command )
-			$this->serialRemLoop( $serialOrRem, self::$commandString, $command );
+		foreach ($this->listeners as $listener)
+			$this->serialRemLoop($serialOrRem, self::$listenerString, $listener);
+
+		foreach ($this->commands as $command)
+			$this->serialRemLoop($serialOrRem, self::$commandString, $command);
 	}
 
 	/**
@@ -649,62 +694,72 @@ class ProcessWorkhorse
 	 *
 	 * @author Jack Blower <Jack@elvenspellmaker.co.uk>
 	 */
-	private function serialRemLoop( $methodName, $beginningString, $object )
+	private function serialRemLoop($methodName, $beginningString, $object)
 	{
-		if ( method_exists( $object, $methodName ) )
-			if ( $object->{$methodName}() !== FALSE )
-				$this->serialRemLog( $beginningString, $object, $methodName, "INFO" );
+		if (method_exists($object, $methodName))
+			if ($object->{$methodName}() !== FALSE)
+				$this->serialRemLog($beginningString, $object, $methodName, "INFO");
 			else
-				$this->serialRemLog( $beginningString, $object, $methodName, "WARNING" );
+				$this->serialRemLog($beginningString, $object, $methodName, "WARNING");
 	}
-	
+
 	/**
 	 * The log cop
 	 *
 	 * @author Jack Blower <Jack@elvenspellmaker.co.uk>
 	 */
-	private function serialRemLog( $beginningString, $object, $methodName, $logType )
+	private function serialRemLog($beginningString, $object, $methodName, $logType)
 	{
 		$fail = ( $logType == "WARNING" ) ? " Fail" : "";
-		$this->log( $beginningString . " '" . $this->getClassName( $object ) . "' " . self::$serialiseStrings[ucfirst( $methodName ) . " End" . $fail], $logType );
+		$this->log($beginningString . " '" . $this->getClassName($object) . "' " . self::$serialiseStrings[ucfirst($methodName) . " End" . $fail], $logType);
 	}
-	
+
 	/**
 	 * Get the user nickname
 	 * @param string $user
 	 * @return string|boolean
 	 * @author Hoshang Sadiq <superaktieboy@gmail.com>
 	 */
-	private function getUserNickName( $user )
+	private function getUserNickName($user)
 	{
-		$result = preg_match( '/([a-zA-Z0-9_]+)!/', $user, $matches );
-		
-		if ( $result === 1 ) return $matches[1];
-		
+		$result = preg_match('/([a-zA-Z0-9_]+)!/', $user, $matches);
+
+		if ($result === 1)
+			return $matches[1];
+
 		return false;
 	}
-	
+
 	/**
 	 * Returns a specific requested command.
 	 * Please inspect \Library\IRC\Bot::$commands to find out the name
 	 *
-	 * @param string $commands			
+	 * @param string $commands
 	 * @return \Library\IRC\Command\Base
 	 */
-	public function getCommand( $command ) { return $this->commands[$command]; }
+	public function getCommand($command)
+	{
+		return $this->commands[$command];
+	}
 
 	/**
 	 * Return a list of all the commands registered
 	 * @return array
 	 */
-	public function getCommands() { return $this->commands; }
+	public function getCommands()
+	{
+		return $this->commands;
+	}
 
 	/**
 	 * Get the command prefix
 	 * @return string
 	 */
-	public function getCommandPrefix() { return $this->commandPrefix; }
-	
+	public function getCommandPrefix()
+	{
+		return $this->commandPrefix;
+	}
+
 	public function setCommandPrefix($prefix)
 	{
 		$this->commandPrefix = $prefix;
@@ -715,44 +770,62 @@ class ProcessWorkhorse
 	 * get the nick of the bot
 	 * @return string
 	 */
-	public function getNick() { return $this->nick; }
+	public function getNick()
+	{
+		return $this->nick;
+	}
 
 	/**
 	 * get the connection
 	 * @return \Library\IRC\Connection
 	 */
-	public function getConnection() { return $this->socket; }
-	
+	public function getConnection()
+	{
+		return $this->socket;
+	}
+
 	/**
 	 * Return a list of loaded listeners
 	 *
 	 * @return array
 	 */
-	public function getListeners() { return $this->listeners; }
+	public function getListeners()
+	{
+		return $this->listeners;
+	}
 
 	/**
 	 * Returns a specific requested listener.
 	 * Please inspect \Library\IRC\Bot::$listeners to find out the name
 	 *
-	 * @param string $listener			
+	 * @param string $listener
 	 * @return \Library\IRC\Listener\Base
 	 */
-	public function getListener( $listener ) { return $this->listeners[$listener]; }
-	
-	
+	public function getListener($listener)
+	{
+		return $this->listeners[$listener];
+	}
+
 	/**
 	 * Returns the filename of the root file.
 	 * This is set in the main pWorkhorse.php
-	 * 	 
+	 *
 	 * @return string
 	 */
-	public function getRootFileName() { return ROOT_FILE_NAME; }
-	
+	public function getRootFileName()
+	{
+		return ROOT_FILE_NAME;
+	}
+
 	/**
-	 * Returns the directory path to the root file. 
-	 * This is set in the main pWorkhorse.php 
-	 * 
-	 * @return string 
-	 */	 
-	public function getRootDir() { return ROOT_DIR; }
+	 * Returns the directory path to the root file.
+	 * This is set in the main pWorkhorse.php
+	 *
+	 * @return string
+	 */
+	public function getRootDir()
+	{
+		return ROOT_DIR;
+	}
+
 }

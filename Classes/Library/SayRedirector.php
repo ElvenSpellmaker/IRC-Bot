@@ -40,7 +40,6 @@ class SayRedirector
 	
 	protected $messageBuffer = array();
 	
-	//function __construct(\Library\IRC\Bot $bot)
 	function __construct($bot) { $this->bot = $bot; }
 
 	public function start( $person, $channel )

@@ -217,8 +217,15 @@ class Bot
 			$read = $clients;
 			
 			$this->log("TEST: BEFORE SOCKET SELECT.");
-			if ( socket_select( $read, $write = NULL, $except = NULL, NULL ) < 1 )
-				continue;
+			$write = NULL;
+			$except = NULL;
+			if( socket_select( $read, $write, $except, NULL ) < 1 )
+			{
+				$this->log( 'I\'m here \o/' );
+				$message = socket_strerror( socket_last_error() );
+				$this->log( $message );
+				exit(1);
+			}
 			$this->log("TEST: AFTER SOCKET SELECT.");
 			
 			// If we don't have a workhorse connection, try to acquire one.
@@ -278,7 +285,7 @@ class Bot
 			if( in_array( $this->connection->getSocket(), $read ) )
 			{
 				$data = $this->connection->getAllData();
-				if( $data === '' ) die();
+				if($data === '') die(); // Die for now 
 				foreach( $data as $line ) $this->mainHandler( $line, $clients );
 			}
 		}
@@ -362,13 +369,14 @@ class Bot
 			$queryUser = $queryUser[1];
 
 			
-			if( $args[3] == ":VERSION\r\n" ) $this->sendDataToServer( "NOTICE $queryUser :VERSION WildBot (Multi-Process) : v0.1 : PHP 5.5" );
+			if( $args[3] == ":VERSION\r\n" ) $this->sendDataToServer( "NOTICE $queryUser :VERSION WildBot (Multi-Process) : v0.1 : PHP ". phpversion() ."" );
 		}
 		
 		// Lastly if we have a connection ...
-		if($this->workhorseConnection > 0) // We have a connection from the workhorse, hoorah!
+		if($this->workhorseConnection && $this->workhorseConnection->getSocket() > 0) // We have a connection from the workhorse, hoorah!
 		{
 			$this->log("TEST: WORKHORSE DATA BEFORE WRITE.");
+
 			$writeResult = $this->workhorseConnection->sendData( $data ); // Write the data through to the socket for the workhorse to use.
 			$this->log("TEST: WORKHORSE DATA AFTER WRITE.");
 			

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * WildBot
  *
@@ -13,7 +14,6 @@
  * @package WildBot
  * @author Hoshang Sadiq <superaktieboy@gmail.com>
  */
- 
 require('StaticBot.php');
 
 /**
@@ -21,18 +21,19 @@ require('StaticBot.php');
  * This will invoke everything
  *
  * @package WildBot
- *		 
+ *
  * @author Hoshang Sadiq <superaktieboy@gmail.com>
  */
 abstract class WorkHorse extends \StaticBot
-{	
+{
+
 	/**
 	 * This will contain the process workhorse for the bot.
-	 * 
+	 *
 	 * @var \Library\IRC\ProcessWorkhorse
 	 */
 	public static $pw = null;
-	
+
 	/**
 	 * Initiates the application.
 	 * Loads the autoloader and runs the configurations
@@ -42,38 +43,42 @@ abstract class WorkHorse extends \StaticBot
 		self::basicConfiguration();
 		self::$pw = new Library\IRC\ProcessWorkhorse();
 		self::configure(self::$pw);
-		
+
 		self::registerPlugins('Command');
 		self::registerPlugins('Listener');
 		self::$pw->remember(); // Try to remember everything.
-		
 		// Connect to the server.
 		self::$pw->connectToServerAndStart();
 	}
-	
+
 	/**
 	 * Finds all the commands or listeners and registers them
-	 */ 	 
-	public static function registerPlugins( $type = NULL )
+	 */
+	public static function registerPlugins($type = NULL)
 	{
-		if($type !== 'Command' && $type !== 'Listener') return;
-		foreach( self::get( 'config' )->{strtolower($type) .'s'} as $class => $args ) // 'Commands' or 'Listeners'
-		{
-			$pluginPath = $type .'\\'. $class; // Command\<foo> or Listener\<foo>
+		if ($type !== 'Command' && $type !== 'Listener')
+			return;
+		foreach (self::get('config')->{strtolower($type) . 's'} as $class => $args)
+		{ // 'Commands' or 'Listeners'
+			$pluginPath = $type . '\\' . $class; // Command\<foo> or Listener\<foo>
 			echo $pluginPath;
-			try {
-				$plugin = new $pluginPath( $args ); // Try to instantiate a new
-													// plugin
-													// with the arguments.
-			} catch ( Exception $e ) {
-				$plugin = new $pluginPath(); // Try to instantiate a new plugin with
-											 // no arguments if it fails to work
-											 // before.
-				if ( !empty( $args ) )
-					self::$pw->log( 'The '. $type .' "' . $plugin . '" has arguments in the config but doesn\'t accept any!', 'WARNING' );
+			try
+			{
+				$plugin = new $pluginPath($args); // Try to instantiate a new
+				// plugin
+				// with the arguments.
 			}
-			
-			self::$pw->{'add'. $type}( $plugin ); // addCommand or addListener
+			catch (Exception $e)
+			{
+				$plugin = new $pluginPath(); // Try to instantiate a new plugin with
+				// no arguments if it fails to work
+				// before.
+				if (!empty($args))
+					self::$pw->log('The ' . $type . ' "' . $plugin . '" has arguments in the config but doesn\'t accept any!', 'WARNING');
+			}
+
+			self::$pw->{'add' . $type}($plugin); // addCommand or addListener
 		}
 	}
+
 }

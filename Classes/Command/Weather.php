@@ -137,15 +137,15 @@ class Weather extends \Library\IRC\Command\Base {
 			
 			if ( !$ip )
 			{
-				$this->say( sprintf( "Enter location. (Usage: !weather location)" ) );
+				$this->say( sprintf( "No IP can be found, please enter location. (Usage: !weather location)" ) );
 				return;
 			}
-			
+
 			$location = $this->getLocationNameFromIp( $ip );
 			
 			if ( !strlen( $location ) )
 			{
-				$this->say( sprintf( "Enter location. (Usage: !weather location)" ) );
+				$this->say( sprintf( "No location found for your IP, please enter location. (Usage: !weather location)" ) );
 				return;
 			}
 		}
@@ -186,7 +186,7 @@ class Weather extends \Library\IRC\Command\Base {
 			//var_dump($results);
 			$condition = $results->channel->item->condition;
 			
-			$windSpeed = $results->channel->wind->speed;
+			$windSpeed = round(($results->channel->wind->speed / 1.60934), 2);
 			$chill = $results->channel->wind->chill;
 			
 			$humidity = $results->channel->atmosphere->humidity;
@@ -195,8 +195,10 @@ class Weather extends \Library\IRC\Command\Base {
 			$sunrise = $results->channel->astronomy->sunrise;
 			$sunset = $results->channel->astronomy->sunset;
 			
-			$speedUnit = $results->channel->units->speed;
+			//$speedUnit = $results->channel->units->speed;
+			$speedUnit = 'mph';
 			$distanceUnit = $results->channel->units->distance;
+			//$distanceUnit = 'miles';
 			
 			$highTemp = $results->channel->item->forecast[0]->high;
 			$lowTemp = $results->channel->item->forecast[0]->low;
@@ -291,7 +293,7 @@ class Weather extends \Library\IRC\Command\Base {
 	}
 	 
 	/**
-	* Remembers the Karma database from file.
+	* Remembers the Weather database from file.
 	*/ 
 	public function remember()
 	{

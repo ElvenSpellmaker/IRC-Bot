@@ -62,7 +62,7 @@ class Socket implements \Library\IRC\Connection
 		$this->socket = socket_create( AF_INET, SOCK_STREAM, SOL_TCP );
 		
 		if( ! socket_connect( $this->socket, $this->server, $this->port ) )
-			throw new Exception( 'Unable to connect to server via socket_connect with server: "'. $this->server .'" and port: "'. $this->port .'.' );
+			throw new \Exception( 'Unable to connect to server via socket_connect with server: "'. $this->server .'" and port: "'. $this->port .'.' );
 	}
 
 	/**
@@ -113,7 +113,7 @@ class Socket implements \Library\IRC\Connection
 	
 		$data = explode( "\r\n", $data ); // Explode by new lines which indicate separate messages.
 		foreach( $data as &$line ) $line .= "\r\n"; // Add the new lines back onto the messages.
-		
+	
 		return array_slice( $data, 0, -1 ); // The last message is always an empty string, so don't return it.
 	}
 

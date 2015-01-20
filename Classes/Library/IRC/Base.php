@@ -260,7 +260,7 @@ abstract class Base
 	protected function sayRaw( $msg )
 	{
 		$this->bot->log($msg);
-		fwrite( $this->connection, $msg . "\r\n" );
+		fwrite( $this->connection, trim( \Library\FunctionCollection::removeLineBreaks( $msg ) ) . "\r\n" );
 		return $this;
 	}
 	

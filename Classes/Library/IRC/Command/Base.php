@@ -91,10 +91,13 @@ abstract class Base extends \Library\IRC\Base {
 		// catches from @ to first space
 		if ( preg_match( '/@([a-z0-9.-]*) /i', $this->data, $match ) === 1 )
 		{
-			$hostname = $match[1];
-			$ip = gethostbyname( $hostname );
+			$hostname = '1cfksm1tu7fmy.2.ip6.xand.co.uk';
+			$hostname = escapeshellarg($match[1]);
+			$ip = `host $hostname`;
+
+			$matches = [];
 			// did we really get an IP
-			if ( preg_match( '/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/', $ip ) === 1 ) return $ip;
+			if ( preg_match( '/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/', $ip, $matches ) === 1 ) return $matches[1];
 		}
 		return null;
 	}
